@@ -27,8 +27,11 @@
     "@codemirror/language": "^6.10.0",
     "@codemirror/state": "^6.4.0",
     "@codemirror/view": "^6.23.0",
+    "@replit/codemirror-vim": "^6.0.14",
     "codemirror": "^6.0.1",
     "date-fns": "^3.0.0",
+    "dexie": "^3.2.4",
+    "dexie-react-hooks": "^1.1.7",
     "fabric": "^6.0.0",
     "react-day-picker": "^8.10.0"
   },
