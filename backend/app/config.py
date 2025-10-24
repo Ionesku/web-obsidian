@@ -31,8 +31,11 @@ class Settings(BaseSettings):
         """Parse CORS origins from string or list"""
         if isinstance(v, str):
             # Handle comma-separated string from environment
-            return [origin.strip() for origin in v.split(',') if origin.strip()]
-        return v
+            origins = [origin.strip() for origin in v.split(',') if origin.strip()]
+            return origins if origins else ["http://localhost:5173"]
+        if isinstance(v, list):
+            return v
+        return ["http://localhost:5173"]
     
     class Config:
         env_file = ".env"
