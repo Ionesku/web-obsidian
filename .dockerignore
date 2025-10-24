@@ -1,59 +1,27 @@
-# Backend
-backend/venv
-backend/__pycache__
-backend/*.pyc
-backend/*.pyo
-backend/*.db
-backend/*.sqlite
-backend/.env
-backend/uploads
-
-# Frontend
-frontend/node_modules
-frontend/.next
-frontend/out
-frontend/build
-frontend/.env.local
-frontend/.env.*.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-
 # Git
 .git
 .gitignore
-.gitattributes
+
+# Docker
+.dockerignore
+docker-compose*.yml
+Dockerfile
+
+# CI/CD
+.github
 
 # Documentation
 *.md
-!README.md
+docs/
 
 # IDE
 .vscode
 .idea
-*.swp
-*.swo
-*~
+.cursor
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
-
-# CI/CD
-.github
-.gitlab-ci.yml
-
-# Testing
-.pytest_cache
-.coverage
-htmlcov
-
-# Misc
-.cursor
+# Logs
 *.log
-
