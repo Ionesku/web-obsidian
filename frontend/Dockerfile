@@ -11,6 +11,9 @@ RUN npm install --legacy-peer-deps
 # Copy source code
 COPY . .
 
+# Debug: List files to verify copy
+RUN ls -la src/lib/ || echo "lib directory not found!"
+
 # Build the app
 RUN npm run build
 
