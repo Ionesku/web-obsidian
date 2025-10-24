@@ -62,14 +62,14 @@ class ApiClient {
 
   // Auth endpoints
   async register(username: string, email: string, password: string) {
-    return this.request('/api/auth/register', {
+    return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, email, password }),
     });
   }
 
   async login(username: string, password: string): Promise<{ access_token: string }> {
-    const response = await this.request<{ access_token: string }>('/api/auth/login', {
+    const response = await this.request<{ access_token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
@@ -78,65 +78,65 @@ class ApiClient {
   }
 
   async logout() {
-    await this.request('/api/auth/logout', { method: 'POST' });
+    await this.request('/auth/logout', { method: 'POST' });
     this.setToken(null);
   }
 
   async getCurrentUser() {
-    return this.request('/api/auth/me');
+    return this.request('/auth/me');
   }
 
   // File endpoints
   async listFiles(folder: string = '') {
     const query = folder ? `?folder=${encodeURIComponent(folder)}` : '';
-    return this.request(`/api/files/list${query}`);
+    return this.request(`/files/list${query}`);
   }
 
   async getFile(path: string) {
-    return this.request(`/api/files/${path}`);
+    return this.request(`/files/${path}`);
   }
 
   async createFile(path: string, content: string) {
-    return this.request('/api/files/', {
+    return this.request('/files/', {
       method: 'POST',
       body: JSON.stringify({ path, content }),
     });
   }
 
   async updateFile(path: string, content: string) {
-    return this.request(`/api/files/${path}`, {
+    return this.request(`/files/${path}`, {
       method: 'PUT',
       body: JSON.stringify({ path, content }),
     });
   }
 
   async deleteFile(path: string) {
-    return this.request(`/api/files/${path}`, {
+    return this.request(`/files/${path}`, {
       method: 'DELETE',
     });
   }
 
   async renameFile(oldPath: string, newPath: string) {
-    return this.request('/api/files/rename', {
+    return this.request('/files/rename', {
       method: 'POST',
       body: JSON.stringify({ old_path: oldPath, new_path: newPath }),
     });
   }
 
   async getBacklinks(path: string) {
-    return this.request(`/api/files/${path}/backlinks`);
+    return this.request(`/files/${path}/backlinks`);
   }
 
   async getDailyNote(date?: string) {
     const dateParam = date ? `/${date}` : '';
-    return this.request(`/api/files/daily${dateParam}`);
+    return this.request(`/files/daily${dateParam}`);
   }
 
   async uploadAttachment(file: File) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const url = `${this.baseUrl}/api/files/upload`;
+    const url = `${this.baseUrl}/files/upload`;
     const headers: HeadersInit = {};
 
     if (this.token) {
@@ -161,39 +161,39 @@ class ApiClient {
 
   // Search endpoints
   async search(query: string, limit: number = 50) {
-    return this.request(`/api/search/?q=${encodeURIComponent(query)}&limit=${limit}`);
+    return this.request(`/search/?q=${encodeURIComponent(query)}&limit=${limit}`);
   }
 
   async searchByTag(tag: string, limit: number = 50) {
-    return this.request(`/api/search/tags/${encodeURIComponent(tag)}?limit=${limit}`);
+    return this.request(`/search/tags/${encodeURIComponent(tag)}?limit=${limit}`);
   }
 
   async reindexSearch() {
-    return this.request('/api/search/reindex', { method: 'POST' });
+    return this.request('/search/reindex', { method: 'POST' });
   }
 
   async getSearchStats() {
-    return this.request('/api/search/stats');
+    return this.request('/search/stats');
   }
 
   // Canvas endpoints
   async listCanvases() {
-    return this.request('/api/canvas/list');
+    return this.request('/canvas/list');
   }
 
   async getCanvas(name: string) {
-    return this.request(`/api/canvas/${name}`);
+    return this.request(`/canvas/${name}`);
   }
 
   async saveCanvas(name: string, data: any) {
-    return this.request(`/api/canvas/${name}`, {
+    return this.request(`/canvas/${name}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteCanvas(name: string) {
-    return this.request(`/api/canvas/${name}`, {
+    return this.request(`/canvas/${name}`, {
       method: 'DELETE',
     });
   }
