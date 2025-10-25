@@ -281,7 +281,8 @@ export function MarkdownEditor({
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [initialContent, isVimMode, createExtensions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialContent]);
 
   /**
    * Toggle Vim mode
