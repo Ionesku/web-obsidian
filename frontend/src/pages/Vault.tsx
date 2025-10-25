@@ -802,7 +802,7 @@ export function VaultPage() {
               </div>
             )}
 
-          {currentNote ? (
+          {currentNote && currentNote.path === selectedPath ? (
             <>
               {/* Editor */}
               <div className="flex-1 overflow-hidden">
@@ -842,6 +842,13 @@ export function VaultPage() {
                 </div>
               </div>
             </>
+          ) : selectedPath ? (
+            <div className="h-full flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-sm">Loading {selectedPath}...</p>
+              </div>
+            </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
