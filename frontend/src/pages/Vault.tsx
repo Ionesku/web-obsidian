@@ -60,8 +60,15 @@ export function VaultPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
-  const [tabs, setTabs] = useState<Tab[]>([]);
-  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<Tab[]>(() => {
+    // Load tabs from localStorage on init
+    const saved = localStorage.getItem('vault_tabs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [activeTab, setActiveTab] = useState<string | null>(() => {
+    // Load active tab from localStorage
+    return localStorage.getItem('vault_active_tab');
+  });
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
@@ -78,6 +85,20 @@ export function VaultPage() {
     }
     loadFiles();
   }, [isAuthenticated, navigate, loadFiles]);
+
+  // Save tabs to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('vault_tabs', JSON.stringify(tabs));
+  }, [tabs]);
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('vault_active_tab', activeTab);
+    } else {
+      localStorage.removeItem('vault_active_tab');
+    }
+  }, [activeTab]);
 
   // Resize handler
   useEffect(() => {
@@ -259,7 +280,7 @@ export function VaultPage() {
   const handleSave = async (content: string) => {
     if (selectedPath) {
       try {
-        await saveNote(selectedPath, content);
+      await saveNote(selectedPath, content);
         console.log('Note saved successfully');
       } catch (error) {
         console.error('Failed to save note:', error);
@@ -284,7 +305,7 @@ export function VaultPage() {
         const tag = tagMatch[2]; // Extract tag without #
         searchByTag(tag);
       } else {
-        search(value);
+      search(value);
       }
     } else {
       clearSearch();
@@ -375,9 +396,10 @@ export function VaultPage() {
   const handleTagClick = (tag: string) => {
     // Remove # if present
     const cleanTag = tag.replace(/^#/, '');
-    const searchQuery = `tag:${cleanTag}`;
+    // Use the tag directly as search query - whoosh will find it in tags field
+    const searchQuery = cleanTag;
     setSearchInput(searchQuery);
-    handleSearch(searchQuery);
+    search(searchQuery); // Direct search, not through handleSearch
     setShowSearch(true);
   };
 
@@ -446,7 +468,7 @@ export function VaultPage() {
         <div className="flex-1" />
         
         {/* User menu at bottom */}
-        <div className="relative">
+          <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
@@ -460,7 +482,7 @@ export function VaultPage() {
               <div className="px-4 py-2 border-b">
                 <div className="text-sm font-semibold">{user?.username}</div>
                 <div className="text-xs text-gray-500">{user?.email}</div>
-              </div>
+          </div>
               <button
                 onClick={toggleDarkMode}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
@@ -478,7 +500,7 @@ export function VaultPage() {
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
-            </div>
+        </div>
           )}
         </div>
       </aside>
@@ -494,7 +516,7 @@ export function VaultPage() {
             <div className="p-4 space-y-2 border-b">
               <div className="flex gap-2">
                 <button
-                  onClick={() => setShowNewNoteDialog(true)}
+              onClick={() => setShowNewNoteDialog(true)}
                   className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
                   title="New note"
                 >
@@ -523,38 +545,38 @@ export function VaultPage() {
                 </button>
               </div>
 
-              {showNewNoteDialog && (
-                <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
-                  <Input
-                    placeholder="Note name"
-                    value={newNoteName}
-                    onChange={(e) => setNewNoteName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCreateNote();
-                      if (e.key === 'Escape') {
-                        setShowNewNoteDialog(false);
-                        setNewNoteName('');
-                      }
+            {showNewNoteDialog && (
+              <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
+                <Input
+                  placeholder="Note name"
+                  value={newNoteName}
+                  onChange={(e) => setNewNoteName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateNote();
+                    if (e.key === 'Escape') {
+                      setShowNewNoteDialog(false);
+                      setNewNoteName('');
+                    }
+                  }}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleCreateNote}>
+                    Create
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowNewNoteDialog(false);
+                      setNewNoteName('');
                     }}
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleCreateNote}>
-                      Create
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowNewNoteDialog(false);
-                        setNewNoteName('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  >
+                    Cancel
+                  </Button>
                 </div>
-              )}
+              </div>
+            )}
 
               {showNewFolderDialog && (
                 <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
@@ -581,45 +603,45 @@ export function VaultPage() {
                       onClick={() => {
                         setShowNewFolderDialog(false);
                         setNewFolderName('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                    }}
+                  >
+                    Cancel
+                  </Button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
             <div className="flex-1 overflow-y-auto px-2 py-2">
               <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                 {query ? 'Search Results' : 'Files'}
-              </h3>
-              
-              {isLoading ? (
+            </h3>
+            
+            {isLoading ? (
                 <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
-              ) : query && results.length > 0 ? (
-                <div className="space-y-1">
-                  {results.map((result) => (
-                    <button
-                      key={result.path}
-                      onClick={() => handleSelectNote(result.path)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 transition-colors ${
-                        selectedPath === result.path ? 'bg-blue-50 text-blue-600' : ''
-                      }`}
-                    >
+            ) : query && results.length > 0 ? (
+              <div className="space-y-1">
+                {results.map((result) => (
+                  <button
+                    key={result.path}
+                    onClick={() => handleSelectNote(result.path)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 transition-colors ${
+                      selectedPath === result.path ? 'bg-blue-50 text-blue-600' : ''
+                    }`}
+                  >
                       <div className="font-medium truncate flex items-center gap-1">
                         <File className="w-4 h-4" />
                         {result.title}
                       </div>
-                      {result.preview && (
-                        <div className="text-xs text-gray-500 truncate mt-1">
-                          {result.preview}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ) : query ? (
+                    {result.preview && (
+                      <div className="text-xs text-gray-500 truncate mt-1">
+                        {result.preview}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : query ? (
                 <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
               ) : (
                 <div className="space-y-0.5">
@@ -739,19 +761,19 @@ export function VaultPage() {
                   >
                     <X className="w-3 h-3" />
                   </button>
-                </button>
-              ))}
-            </div>
-          )}
+                  </button>
+                ))}
+              </div>
+            )}
 
           {currentNote ? (
             <>
               {/* Editor */}
               <div className="flex-1 overflow-hidden">
-                <MarkdownEditor
+            <MarkdownEditor
                   key={selectedPath}
-                  initialContent={currentNote.content}
-                  onSave={handleSave}
+              initialContent={currentNote.content}
+              onSave={handleSave}
                   onChange={handleContentChange}
                   onWikiLinkClick={handleWikiLinkClick}
                   onTagClick={handleTagClick}

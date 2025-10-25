@@ -54,7 +54,7 @@ export function MarkdownEditor({
   onTagClick,
   vimMode = false,
   autoSave = true,
-  autoSaveDelay = 2000,
+  autoSaveDelay = 500, // Save every 500ms instead of 2000ms
   className = '',
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -68,23 +68,22 @@ export function MarkdownEditor({
    */
   const autoSaveContent = useCallback(
     async (content: string) => {
-      if (!autoSave || !noteId) return;
+      if (!autoSave) return;
 
-      setIsSaving(true);
-      try {
-        await notesDB.saveNote({
-          id: noteId,
-          title: '', // Should be provided from parent
-          content,
-        });
-        onSave?.(content);
-      } catch (error) {
-        console.error('Auto-save failed:', error);
-      } finally {
-        setIsSaving(false);
+      // Always call onSave from parent (Vault handles actual saving)
+      if (onSave) {
+        setIsSaving(true);
+        try {
+          await onSave(content);
+          console.log('✅ Auto-saved');
+        } catch (error) {
+          console.error('❌ Auto-save failed:', error);
+        } finally {
+          setIsSaving(false);
+        }
       }
     },
-    [autoSave, noteId, onSave]
+    [autoSave, onSave]
   );
 
   /**
@@ -220,7 +219,11 @@ export function MarkdownEditor({
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const content = update.state.doc.toString();
-            onChange?.(content);
+            // Call onChange immediately
+            if (onChange) {
+              onChange(content);
+            }
+            // Debounced save
             debouncedAutoSave(content);
           }
         }),
