@@ -140,25 +140,7 @@ export function MarkdownEditor({
         ]),
 
         // Markdown support with code blocks
-        markdown({
-          codeLanguages: [
-            { name: 'javascript', alias: ['js'] },
-            { name: 'typescript', alias: ['ts'] },
-            { name: 'python', alias: ['py'] },
-            { name: 'bash', alias: ['sh', 'shell'] },
-            { name: 'json' },
-            { name: 'html' },
-            { name: 'css' },
-            { name: 'markdown', alias: ['md'] },
-            { name: 'yaml', alias: ['yml'] },
-            { name: 'sql' },
-            { name: 'rust', alias: ['rs'] },
-            { name: 'go' },
-            { name: 'java' },
-            { name: 'cpp', alias: ['c++'] },
-            { name: 'c' },
-          ],
-        }),
+        markdown(),
 
         // Custom extensions
         wikiLinkPlugin,
