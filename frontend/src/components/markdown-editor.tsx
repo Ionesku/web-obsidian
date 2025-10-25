@@ -41,6 +41,8 @@ import { transclusionPlugin, transclusionTheme } from '@/lib/codemirror/transclu
 import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
+import { useAutosave } from '@/hooks/useAutosave';
+import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
 
 /**
  * Main Markdown Editor Component
@@ -54,53 +56,25 @@ export function MarkdownEditor({
   onTagClick,
   vimMode = false,
   autoSave = true,
-  autoSaveDelay = 500, // Save every 500ms instead of 2000ms
+  autoSaveDelay = 500,
   className = '',
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [isVimMode, setIsVimMode] = useState(vimMode);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
 
-  /**
-   * Auto-save function
-   */
-  const autoSaveContent = useCallback(
-    async (content: string) => {
-      if (!autoSave) return;
-
-      // Always call onSave from parent (Vault handles actual saving)
+  // Use production-grade autosave hook
+  const { save: autosaveContent, status, lastSaved, error, forceFlush } = useAutosave({
+    onSave: async (content) => {
       if (onSave) {
-        setIsSaving(true);
-        try {
-          await onSave(content);
-          console.log('✅ Auto-saved');
-        } catch (error) {
-          console.error('❌ Auto-save failed:', error);
-        } finally {
-          setIsSaving(false);
-        }
+        await onSave(content);
       }
+      return {}; // Could return { etag } if backend supports it
     },
-    [autoSave, onSave]
-  );
-
-  /**
-   * Debounced auto-save
-   */
-  const debouncedAutoSave = useCallback(
-    (content: string) => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-
-      autoSaveTimerRef.current = setTimeout(() => {
-        autoSaveContent(content);
-      }, autoSaveDelay);
-    },
-    [autoSaveContent, autoSaveDelay]
-  );
+    debounceMs: autoSaveDelay,
+    maxWaitMs: 5000, // Force save after 5 seconds of continuous typing
+    enabled: autoSave,
+  });
 
   /**
    * Create editor extensions
@@ -223,10 +197,22 @@ export function MarkdownEditor({
             if (onChange) {
               onChange(content);
             }
-            // Debounced save
-            debouncedAutoSave(content);
+            // Production-grade autosave with maxWait, dedup, retry, etc.
+            autosaveContent(content);
           }
         }),
+
+        // Keyboard shortcuts
+        keymap.of([
+          {
+            key: 'Mod-s',
+            run: (view) => {
+              const content = view.state.doc.toString();
+              forceFlush(); // Immediate save on Ctrl/Cmd+S
+              return true;
+            },
+          },
+        ]),
 
         // Line wrapping
         EditorView.lineWrapping,
@@ -239,7 +225,7 @@ export function MarkdownEditor({
 
       return extensions;
     },
-    [onChange, debouncedAutoSave]
+    [onChange, autosaveContent, forceFlush]
   );
 
   /**
@@ -262,12 +248,27 @@ export function MarkdownEditor({
 
     return () => {
       view.destroy();
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialContent]);
+
+  // Save on blur
+  useEffect(() => {
+    const handleBlur = () => {
+      if (viewRef.current) {
+        const content = viewRef.current.state.doc.toString();
+        autosaveContent(content, true); // Immediate save
+      }
+    };
+
+    const editorElement = editorRef.current;
+    if (editorElement) {
+      editorElement.addEventListener('blur', handleBlur, true);
+      return () => {
+        editorElement.removeEventListener('blur', handleBlur, true);
+      };
+    }
+  }, [autosaveContent]);
 
   /**
    * Toggle Vim mode
@@ -287,16 +288,6 @@ export function MarkdownEditor({
     viewRef.current.setState(state);
     setIsVimMode(newVimMode);
   }, [isVimMode, createExtensions]);
-
-  /**
-   * Manual save
-   */
-  const handleSave = useCallback(() => {
-    if (viewRef.current) {
-      const content = viewRef.current.state.doc.toString();
-      autoSaveContent(content);
-    }
-  }, [autoSaveContent]);
 
   /**
    * Get current content
@@ -338,14 +329,7 @@ export function MarkdownEditor({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          {isSaving && (
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              Saving...
-            </span>
-          )}
-        </div>
+        <SaveStatusIndicator status={status} lastSaved={lastSaved} error={error} />
       </div>
 
       {/* Editor */}
