@@ -30,7 +30,6 @@ import {
   PanelLeftClose,
   PanelLeft,
   GripVertical,
-  Terminal,
 } from 'lucide-react';
 
 interface FileNode {
@@ -498,7 +497,7 @@ export function VaultPage() {
           }`}
           title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
         >
-          <Terminal className="w-5 h-5" />
+          <span className="text-lg font-bold font-mono">V</span>
         </button>
         
         {/* Spacer */}
