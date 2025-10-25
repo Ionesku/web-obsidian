@@ -66,6 +66,8 @@ export function MarkdownEditor({
   // Use refs to avoid recreating editor extensions on every change
   const onSaveRef = useRef(onSave);
   const onChangeRef = useRef(onChange);
+  const onWikiLinkClickRef = useRef(onWikiLinkClick);
+  const onTagClickRef = useRef(onTagClick);
   
   useEffect(() => {
     onSaveRef.current = onSave;
@@ -74,15 +76,26 @@ export function MarkdownEditor({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+  
+  useEffect(() => {
+    onWikiLinkClickRef.current = onWikiLinkClick;
+  }, [onWikiLinkClick]);
+  
+  useEffect(() => {
+    onTagClickRef.current = onTagClick;
+  }, [onTagClick]);
+
+  // Stable save handler - never changes reference
+  const stableSaveHandler = useCallback(async (content: string) => {
+    if (onSaveRef.current) {
+      await onSaveRef.current(content);
+    }
+    return {}; // Could return { etag } if backend supports it
+  }, []); // Empty deps - function is stable, uses ref
 
   // Use production-grade autosave hook
   const { save: autosaveContent, status, lastSaved, error, forceFlush, reset } = useAutosave({
-    onSave: async (content) => {
-      if (onSaveRef.current) {
-        await onSaveRef.current(content);
-      }
-      return {}; // Could return { etag } if backend supports it
-    },
+    onSave: stableSaveHandler,
     debounceMs: autoSaveDelay,
     maxWaitMs: 5000, // Force save after 5 seconds of continuous typing
     enabled: autoSave,
@@ -158,8 +171,8 @@ export function MarkdownEditor({
             if (pos === null) return false;
 
             // Ctrl/Cmd+Click for wiki links
-            if ((event.ctrlKey || event.metaKey) && onWikiLinkClick) {
-              const handled = handleWikiLinkClick(view, pos, onWikiLinkClick);
+            if ((event.ctrlKey || event.metaKey) && onWikiLinkClickRef.current) {
+              const handled = handleWikiLinkClick(view, pos, onWikiLinkClickRef.current);
               if (handled) {
                 event.preventDefault();
                 return true;
@@ -167,8 +180,8 @@ export function MarkdownEditor({
             }
 
             // Regular click for tags
-            if (onTagClick) {
-              const handled = handleTagClick(view, pos, onTagClick);
+            if (onTagClickRef.current) {
+              const handled = handleTagClick(view, pos, onTagClickRef.current);
               if (handled) {
                 event.preventDefault();
                 return true;
@@ -264,7 +277,7 @@ export function MarkdownEditor({
   );
 
   /**
-   * Initialize editor
+   * Initialize editor - should only run once per noteId
    */
   useEffect(() => {
     if (!editorRef.current) return;
@@ -284,8 +297,9 @@ export function MarkdownEditor({
     return () => {
       view.destroy();
     };
+    // Only recreate editor when noteId changes (file switch), not on content changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialContent]);
+  }, [noteId]);
 
   // Save on blur
   useEffect(() => {
@@ -307,20 +321,29 @@ export function MarkdownEditor({
 
   /**
    * Update editor when vim mode changes
+   * Don't depend on createExtensions to avoid unnecessary re-renders
    */
+  const vimModeRef = useRef(vimMode);
+  
   useEffect(() => {
     if (!viewRef.current) return;
+    
+    // Only update if vim mode actually changed
+    if (vimModeRef.current === vimMode) return;
+    vimModeRef.current = vimMode;
 
     const content = viewRef.current.state.doc.toString();
+    const cursorPos = viewRef.current.state.selection.main.head;
 
-    // Recreate editor with new vim mode
+    // Recreate editor state with new vim mode
     const state = EditorState.create({
       doc: content,
       extensions: createExtensions(vimMode || false),
+      selection: { anchor: cursorPos, head: cursorPos },
     });
 
     viewRef.current.setState(state);
-  }, [vimMode, createExtensions]);
+  }, [vimMode]);
 
   /**
    * Get current content
