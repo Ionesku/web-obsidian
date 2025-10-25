@@ -41,7 +41,7 @@ export function VaultPage() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { files, currentNote, loadFiles, loadNote, saveNote, createNote, isLoading } = useVaultStore();
-  const { query, results, search, clearSearch, setQuery } = useSearchStore();
+  const { query, results, search, searchByTag, clearSearch, setQuery } = useSearchStore();
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -225,7 +225,14 @@ export function VaultPage() {
   const handleSearch = (value: string) => {
     setSearchInput(value);
     if (value.trim()) {
-      search(value);
+      // Check if it's a tag search
+      const tagMatch = value.match(/^tag:(#?)(.+)$/);
+      if (tagMatch) {
+        const tag = tagMatch[2]; // Extract tag without #
+        searchByTag(tag);
+      } else {
+        search(value);
+      }
     } else {
       clearSearch();
     }
