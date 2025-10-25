@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
+env/
+venv/
+ENV/
 build/
 develop-eggs/
 dist/
@@ -12,25 +15,20 @@ eggs/
 .eggs/
 lib/
 lib64/
-
-# But allow frontend source lib
-!frontend/src/lib/
 parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# Virtual Environment
-venv/
-ENV/
-env/
-.venv/
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
 # IDEs
 .vscode/
@@ -38,70 +36,32 @@ env/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Uploads
-uploads/
-*.log
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.hypothesis/
-
-# MyPy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# Frontend
-node_modules/
-.next/
-out/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp/
-.pnp.js
-coverage/
-build/
-dist/
-
-# System Files
 Thumbs.db
 
+# Environment
+.env
+.env.local
+
+# Data (keep structure, ignore content)
+data/app.db
+data/vaults/*/
+!data/vaults/user_1/
+data/indexes/
+data/*.log
+
+# Backups
+backups/
+
+# Build
+frontend/dist/
+frontend/build/
+backend/.pytest_cache/
+
+# Logs
+*.log
+
+# Docker
+.dockerignore
