@@ -63,18 +63,16 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     try {
       await api.updateFile(path, content);
       
-      // Update current note if it's the one being saved
+      // Don't update currentNote.content to avoid recreating the editor
+      // The editor already has the current content
+      // Just update modified time
       const { currentNote } = get();
       if (currentNote?.path === path) {
-        set({ 
-          currentNote: { 
-            ...currentNote, 
-            content 
-          } 
-        });
+        // Optionally update modified time without changing content
+        // to avoid triggering editor recreation
       }
       
-      // Reload files to update modified time
+      // Reload files to update modified time in file list
       await get().loadFiles();
     } catch (error: any) {
       set({ error: error.message });

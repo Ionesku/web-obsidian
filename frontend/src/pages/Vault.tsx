@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import { useVaultStore } from '@/stores/vault';
@@ -301,7 +301,7 @@ export function VaultPage() {
     }
   };
 
-  const handleSave = async (content: string) => {
+  const handleSave = useCallback(async (content: string) => {
     if (selectedPath) {
       try {
       await saveNote(selectedPath, content);
@@ -310,15 +310,15 @@ export function VaultPage() {
         console.error('Failed to save note:', error);
       }
     }
-  };
+  }, [selectedPath, saveNote]);
 
-  const handleContentChange = (content: string) => {
+  const handleContentChange = useCallback((content: string) => {
     // Count words and characters
     const words = content.trim().split(/\s+/).filter(Boolean).length;
     const chars = content.length;
     setWordCount(words);
     setCharCount(chars);
-  };
+  }, []);
 
   const handleSearch = (value: string) => {
     setSearchInput(value);

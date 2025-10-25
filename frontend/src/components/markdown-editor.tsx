@@ -159,6 +159,14 @@ export function MarkdownEditor({
 
             return false;
           },
+          keydown: (event, view) => {
+            // Prevent browser's "Save Page" dialog on Ctrl/Cmd+S
+            if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+              event.preventDefault();
+              return false; // Let CodeMirror's keymap handle it
+            }
+            return false;
+          },
         }),
 
         // Editor theme
