@@ -109,6 +109,10 @@ export function MarkdownEditor({
   const createExtensions = useCallback(
     (vimEnabled: boolean): Extension[] => {
       const extensions: Extension[] = [
+        // Make editor editable
+        EditorView.editable.of(true),
+        EditorState.readOnly.of(false),
+        
         // Basic setup
         lineNumbers(),
         highlightActiveLineGutter(),
@@ -135,8 +139,26 @@ export function MarkdownEditor({
           ...completionKeymap,
         ]),
 
-        // Markdown support
-        markdown(),
+        // Markdown support with code blocks
+        markdown({
+          codeLanguages: [
+            { name: 'javascript', alias: ['js'] },
+            { name: 'typescript', alias: ['ts'] },
+            { name: 'python', alias: ['py'] },
+            { name: 'bash', alias: ['sh', 'shell'] },
+            { name: 'json' },
+            { name: 'html' },
+            { name: 'css' },
+            { name: 'markdown', alias: ['md'] },
+            { name: 'yaml', alias: ['yml'] },
+            { name: 'sql' },
+            { name: 'rust', alias: ['rs'] },
+            { name: 'go' },
+            { name: 'java' },
+            { name: 'cpp', alias: ['c++'] },
+            { name: 'c' },
+          ],
+        }),
 
         // Custom extensions
         wikiLinkPlugin,

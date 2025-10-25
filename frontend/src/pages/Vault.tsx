@@ -14,14 +14,17 @@ import {
   ChevronRight,
   ChevronDown,
   Calendar,
-  Search,
+  Search as SearchIcon,
   Command,
   FileText,
   Grid3x3,
   X,
   BookMarked,
-  ChevronsDownUp,
   ChevronsUpDown,
+  LogOut,
+  User,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 interface FileNode {
@@ -45,15 +48,20 @@ export function VaultPage() {
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showNewNoteDialog, setShowNewNoteDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [newNoteName, setNewNoteName] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -61,7 +69,7 @@ export function VaultPage() {
       return;
     }
     loadFiles();
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, loadFiles]);
 
   // Build file tree from flat file list
   const buildFileTree = (files: any[]): FileNode[] => {
@@ -118,22 +126,24 @@ export function VaultPage() {
     });
   };
 
-  const expandAll = () => {
-    const allFolderPaths = new Set<string>();
-    const collectFolders = (nodes: FileNode[]) => {
-      nodes.forEach((node) => {
-        if (node.type === 'folder') {
-          allFolderPaths.add(node.path);
-          if (node.children) collectFolders(node.children);
-        }
-      });
-    };
-    collectFolders(fileTree);
-    setExpandedFolders(allFolderPaths);
-  };
-
-  const collapseAll = () => {
-    setExpandedFolders(new Set());
+  const toggleAllFolders = () => {
+    if (allExpanded) {
+      setExpandedFolders(new Set());
+      setAllExpanded(false);
+    } else {
+      const allFolderPaths = new Set<string>();
+      const collectFolders = (nodes: FileNode[]) => {
+        nodes.forEach((node) => {
+          if (node.type === 'folder') {
+            allFolderPaths.add(node.path);
+            if (node.children) collectFolders(node.children);
+          }
+        });
+      };
+      collectFolders(fileTree);
+      setExpandedFolders(allFolderPaths);
+      setAllExpanded(true);
+    }
   };
 
   const renderFileTree = (nodes: FileNode[], depth: number = 0): JSX.Element[] => {
@@ -283,6 +293,15 @@ export function VaultPage() {
   const handleDailyNote = async () => {
     const today = new Date().toISOString().split('T')[0];
     const path = `daily/${today}.md`;
+    
+    // Check if daily note already exists
+    const exists = files.find(f => f.path === path);
+    if (!exists) {
+      const initialContent = `# ${today}\n\n`;
+      await createNote(path, initialContent);
+      await loadFiles();
+    }
+    
     await handleSelectNote(path);
   };
 
@@ -314,13 +333,19 @@ export function VaultPage() {
     // Search by tag
     const searchQuery = `tag:${tag}`;
     setSearchInput(searchQuery);
-    search(searchQuery);
+    handleSearch(searchQuery);
+    setShowSearch(true);
+  };
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    // TODO: Apply dark mode to entire app
   };
 
   const currentNoteModified = files.find(f => f.path === selectedPath)?.modified;
 
   return (
-    <div className="h-screen flex bg-slate-50">
+    <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
       {/* Left icon panel */}
       <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4">
         <button
@@ -331,11 +356,11 @@ export function VaultPage() {
           <FileText className="w-5 h-5" />
         </button>
         <button
-          onClick={() => setSearchInput('')}
+          onClick={() => setShowSearch(!showSearch)}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Search"
         >
-          <Search className="w-5 h-5" />
+          <SearchIcon className="w-5 h-5" />
         </button>
         <button
           onClick={handleDailyNote}
@@ -345,7 +370,7 @@ export function VaultPage() {
           <Calendar className="w-5 h-5" />
         </button>
         <button
-          onClick={() => {}}
+          onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Quick Switcher"
         >
@@ -375,30 +400,6 @@ export function VaultPage() {
       </aside>
 
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Obsidian Web</h1>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search notes..."
-                value={searchInput}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-64"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">
-              {user?.username}
-            </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              Logout
-            </Button>
-          </div>
-        </header>
-
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar */}
           <aside className="w-64 bg-white border-r flex flex-col">
@@ -419,18 +420,11 @@ export function VaultPage() {
                   <FolderPlus className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={expandAll}
+                  onClick={toggleAllFolders}
                   className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
-                  title="Expand all"
+                  title={allExpanded ? "Collapse all" : "Expand all"}
                 >
                   <ChevronsUpDown className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={collapseAll}
-                  className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
-                  title="Collapse all"
-                >
-                  <ChevronsDownUp className="w-4 h-4" />
                 </button>
               </div>
 
@@ -541,7 +535,78 @@ export function VaultPage() {
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 flex flex-col overflow-hidden relative">
+            {/* Search overlay */}
+            {showSearch && (
+              <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
+                <div className="max-w-2xl mx-auto">
+                  <Input
+                    type="text"
+                    placeholder="Search notes... (use tag:#tagname for tag search)"
+                    value={searchInput}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="w-full"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      setShowSearch(false);
+                      setSearchInput('');
+                      clearSearch();
+                    }}
+                    className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Switcher */}
+            {showQuickSwitcher && (
+              <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
+                <div className="max-w-2xl mx-auto">
+                  <Input
+                    type="text"
+                    placeholder="Type to search files..."
+                    value={searchInput}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="w-full"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      setShowQuickSwitcher(false);
+                      setSearchInput('');
+                      clearSearch();
+                    }}
+                    className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  {results.length > 0 && (
+                    <div className="mt-2 max-h-96 overflow-y-auto">
+                      {results.map((result) => (
+                        <button
+                          key={result.path}
+                          onClick={() => {
+                            handleSelectNote(result.path);
+                            setShowQuickSwitcher(false);
+                            setSearchInput('');
+                            clearSearch();
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded"
+                        >
+                          <div className="font-medium">{result.title}</div>
+                          <div className="text-xs text-gray-500">{result.path}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Tabs */}
             {tabs.length > 0 && (
               <div className="bg-white border-b flex items-center overflow-x-auto">
@@ -569,13 +634,51 @@ export function VaultPage() {
             {currentNote ? (
               <>
                 {/* File header with metadata */}
-                <div className="bg-white border-b px-6 py-3">
-                  <h2 className="text-xl font-bold">{selectedPath?.split('/').pop()}</h2>
-                  {currentNoteModified && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Modified: {new Date(currentNoteModified).toLocaleString()}
-                    </p>
-                  )}
+                <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">{selectedPath?.split('/').pop()}</h2>
+                    {currentNoteModified && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Modified: {new Date(currentNoteModified).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* User menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
+                    >
+                      {user?.username.charAt(0).toUpperCase()}
+                    </button>
+                    
+                    {showUserMenu && (
+                      <div className="absolute right-0 top-10 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
+                        <div className="px-4 py-2 border-b">
+                          <div className="text-sm font-semibold">{user?.username}</div>
+                          <div className="text-xs text-gray-500">{user?.email}</div>
+                        </div>
+                        <button
+                          onClick={toggleDarkMode}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
+                        >
+                          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                          {darkMode ? 'Light Mode' : 'Dark Mode'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleLogout();
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2 text-red-600"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Editor */}
