@@ -86,6 +86,23 @@ export function VaultPage() {
     loadFiles();
   }, [isAuthenticated, navigate, loadFiles]);
 
+  // Auto-load active tab after page refresh
+  useEffect(() => {
+    if (activeTab && !currentNote && files.length > 0) {
+      // Check if the file still exists
+      const fileExists = files.find(f => f.path === activeTab);
+      if (fileExists) {
+        console.log('🔄 Restoring active tab:', activeTab);
+        loadNote(activeTab);
+        setSelectedPath(activeTab);
+      } else {
+        // File doesn't exist anymore, clear active tab
+        setActiveTab(null);
+        localStorage.removeItem('vault_active_tab');
+      }
+    }
+  }, [activeTab, currentNote, files, loadNote]);
+
   // Save tabs to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('vault_tabs', JSON.stringify(tabs));
