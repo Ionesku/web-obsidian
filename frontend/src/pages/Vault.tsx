@@ -808,6 +808,7 @@ export function VaultPage() {
               <div className="flex-1 overflow-hidden">
             <MarkdownEditor
                   key={selectedPath}
+                  noteId={selectedPath}
               initialContent={currentNote.content}
               onSave={handleSave}
                   onChange={handleContentChange}

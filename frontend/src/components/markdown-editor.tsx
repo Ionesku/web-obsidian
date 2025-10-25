@@ -62,12 +62,24 @@ export function MarkdownEditor({
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  
+  // Use refs to avoid recreating editor extensions on every change
+  const onSaveRef = useRef(onSave);
+  const onChangeRef = useRef(onChange);
+  
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+  
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Use production-grade autosave hook
   const { save: autosaveContent, status, lastSaved, error, forceFlush, reset } = useAutosave({
     onSave: async (content) => {
-      if (onSave) {
-        await onSave(content);
+      if (onSaveRef.current) {
+        await onSaveRef.current(content);
       }
       return {}; // Could return { etag } if backend supports it
     },
@@ -217,8 +229,8 @@ export function MarkdownEditor({
           if (update.docChanged) {
             const content = update.state.doc.toString();
             // Call onChange immediately
-            if (onChange) {
-              onChange(content);
+            if (onChangeRef.current) {
+              onChangeRef.current(content);
             }
             // Production-grade autosave with maxWait, dedup, retry, etc.
             autosaveContent(content);
@@ -248,7 +260,7 @@ export function MarkdownEditor({
 
       return extensions;
     },
-    [onChange, autosaveContent, forceFlush]
+    [autosaveContent, forceFlush]
   );
 
   /**

@@ -63,17 +63,9 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     try {
       await api.updateFile(path, content);
       
-      // Don't update currentNote.content to avoid recreating the editor
-      // The editor already has the current content
-      // Just update modified time
-      const { currentNote } = get();
-      if (currentNote?.path === path) {
-        // Optionally update modified time without changing content
-        // to avoid triggering editor recreation
-      }
-      
-      // Reload files to update modified time in file list
-      await get().loadFiles();
+      // Don't reload files on autosave to avoid UI flicker and focus loss
+      // The file list will be refreshed when user manually interacts with it
+      // This dramatically improves autosave performance and UX
     } catch (error: any) {
       set({ error: error.message });
       throw error;

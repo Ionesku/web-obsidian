@@ -13,7 +13,7 @@ export interface AutosaveStatus {
 
 export interface EditorProps {
   initialContent?: string;
-  noteId?: number;
+  noteId?: string; // Changed from number to string to use file path as identifier
   onSave?: (content: string) => void;
   onChange?: (content: string) => void;
   onWikiLinkClick?: (noteTitle: string) => void;
