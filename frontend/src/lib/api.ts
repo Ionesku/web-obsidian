@@ -14,19 +14,53 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('auth_token');
+    // Try to get token from cookie first, then localStorage
+    this.token = this.getTokenFromCookie() || localStorage.getItem('auth_token');
+  }
+
+  private getTokenFromCookie(): string | null {
+    const name = 'auth_token=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const ca = decodedCookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) === 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return null;
+  }
+
+  private setTokenInCookie(token: string, days: number = 7) {
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = 'expires=' + d.toUTCString();
+    document.cookie = `auth_token=${token};${expires};path=/;SameSite=Lax`;
+  }
+
+  private deleteTokenFromCookie() {
+    document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
   }
 
   setToken(token: string | null) {
     this.token = token;
     if (token) {
+      // Store in both cookie and localStorage for compatibility
+      this.setTokenInCookie(token, 7); // 7 days
       localStorage.setItem('auth_token', token);
     } else {
+      this.deleteTokenFromCookie();
       localStorage.removeItem('auth_token');
     }
   }
 
   getToken(): string | null {
+    if (!this.token) {
+      this.token = this.getTokenFromCookie() || localStorage.getItem('auth_token');
+    }
     return this.token;
   }
 

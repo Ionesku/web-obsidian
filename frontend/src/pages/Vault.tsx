@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import { useVaultStore } from '@/stores/vault';
@@ -25,6 +25,9 @@ import {
   User,
   Moon,
   Sun,
+  PanelLeftClose,
+  PanelLeft,
+  GripVertical,
 } from 'lucide-react';
 
 interface FileNode {
@@ -62,6 +65,11 @@ export function VaultPage() {
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(256); // 64rem = 256px
+  const [isResizing, setIsResizing] = useState(false);
+  
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -70,6 +78,36 @@ export function VaultPage() {
     }
     loadFiles();
   }, [isAuthenticated, navigate, loadFiles]);
+
+  // Resize handler
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const newWidth = e.clientX - 48; // 48px = left icon panel width
+      if (newWidth >= 200 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
 
   // Build file tree from flat file list
   const buildFileTree = (files: any[]): FileNode[] => {
@@ -220,7 +258,12 @@ export function VaultPage() {
 
   const handleSave = async (content: string) => {
     if (selectedPath) {
-      await saveNote(selectedPath, content);
+      try {
+        await saveNote(selectedPath, content);
+        console.log('Note saved successfully');
+      } catch (error) {
+        console.error('Failed to save note:', error);
+      }
     }
   };
 
@@ -330,8 +373,9 @@ export function VaultPage() {
   };
 
   const handleTagClick = (tag: string) => {
-    // Search by tag
-    const searchQuery = `tag:${tag}`;
+    // Remove # if present
+    const cleanTag = tag.replace(/^#/, '');
+    const searchQuery = `tag:${cleanTag}`;
     setSearchInput(searchQuery);
     handleSearch(searchQuery);
     setShowSearch(true);
@@ -397,12 +441,56 @@ export function VaultPage() {
         >
           <BookMarked className="w-5 h-5" />
         </button>
+        
+        {/* Spacer */}
+        <div className="flex-1" />
+        
+        {/* User menu at bottom */}
+        <div className="relative">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
+            title={user?.username}
+          >
+            {user?.username.charAt(0).toUpperCase()}
+          </button>
+          
+          {showUserMenu && (
+            <div className="absolute left-12 bottom-0 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
+              <div className="px-4 py-2 border-b">
+                <div className="text-sm font-semibold">{user?.username}</div>
+                <div className="text-xs text-gray-500">{user?.email}</div>
+              </div>
+              <button
+                onClick={toggleDarkMode}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
+              >
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {darkMode ? 'Light Mode' : 'Dark Mode'}
+              </button>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setShowUserMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2 text-red-600"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar */}
-          <aside className="w-64 bg-white border-r flex flex-col">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        {!sidebarCollapsed && (
+          <aside 
+            ref={sidebarRef}
+            className="bg-white border-r flex flex-col relative"
+            style={{ width: `${sidebarWidth}px` }}
+          >
             <div className="p-4 space-y-2 border-b">
               <div className="flex gap-2">
                 <button
@@ -425,6 +513,13 @@ export function VaultPage() {
                   title={allExpanded ? "Collapse all" : "Expand all"}
                 >
                   <ChevronsUpDown className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
                 </button>
               </div>
 
@@ -532,189 +627,163 @@ export function VaultPage() {
                 </div>
               )}
             </div>
+            
+            {/* Resize handle */}
+            <div
+              className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors"
+              onMouseDown={() => setIsResizing(true)}
+            />
           </aside>
+        )}
 
-          {/* Main content */}
-          <main className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Search overlay */}
-            {showSearch && (
-              <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
-                <div className="max-w-2xl mx-auto">
-                  <Input
-                    type="text"
-                    placeholder="Search notes... (use tag:#tagname for tag search)"
-                    value={searchInput}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="w-full"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => {
-                      setShowSearch(false);
-                      setSearchInput('');
-                      clearSearch();
-                    }}
-                    className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+        {/* Expand button when collapsed */}
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center"
+            title="Expand sidebar"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Main content */}
+        <main className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Search overlay */}
+          {showSearch && (
+            <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
+              <div className="max-w-2xl mx-auto">
+                <Input
+                  type="text"
+                  placeholder="Search notes... (use tag:tagname for tag search)"
+                  value={searchInput}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    setShowSearch(false);
+                    setSearchInput('');
+                    clearSearch();
+                  }}
+                  className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Quick Switcher */}
-            {showQuickSwitcher && (
-              <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
-                <div className="max-w-2xl mx-auto">
-                  <Input
-                    type="text"
-                    placeholder="Type to search files..."
-                    value={searchInput}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="w-full"
-                    autoFocus
-                  />
+          {/* Quick Switcher */}
+          {showQuickSwitcher && (
+            <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
+              <div className="max-w-2xl mx-auto">
+                <Input
+                  type="text"
+                  placeholder="Type to search files..."
+                  value={searchInput}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    setShowQuickSwitcher(false);
+                    setSearchInput('');
+                    clearSearch();
+                  }}
+                  className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                {results.length > 0 && (
+                  <div className="mt-2 max-h-96 overflow-y-auto">
+                    {results.map((result) => (
+                      <button
+                        key={result.path}
+                        onClick={() => {
+                          handleSelectNote(result.path);
+                          setShowQuickSwitcher(false);
+                          setSearchInput('');
+                          clearSearch();
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded"
+                      >
+                        <div className="font-medium">{result.title}</div>
+                        <div className="text-xs text-gray-500">{result.path}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tabs */}
+          {tabs.length > 0 && (
+            <div className="bg-white border-b flex items-center overflow-x-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.path}
+                  onClick={() => handleSelectNote(tab.path)}
+                  className={`px-4 py-2 text-sm border-r flex items-center gap-2 hover:bg-slate-50 transition-colors ${
+                    activeTab === tab.path ? 'bg-slate-100' : ''
+                  }`}
+                >
+                  <File className="w-3 h-3" />
+                  <span>{tab.title}</span>
                   <button
-                    onClick={() => {
-                      setShowQuickSwitcher(false);
-                      setSearchInput('');
-                      clearSearch();
-                    }}
-                    className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
+                    onClick={(e) => closeTab(tab.path, e)}
+                    className="hover:bg-slate-200 rounded p-0.5"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3" />
                   </button>
-                  {results.length > 0 && (
-                    <div className="mt-2 max-h-96 overflow-y-auto">
-                      {results.map((result) => (
-                        <button
-                          key={result.path}
-                          onClick={() => {
-                            handleSelectNote(result.path);
-                            setShowQuickSwitcher(false);
-                            setSearchInput('');
-                            clearSearch();
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded"
-                        >
-                          <div className="font-medium">{result.title}</div>
-                          <div className="text-xs text-gray-500">{result.path}</div>
-                        </button>
-                      ))}
-                    </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {currentNote ? (
+            <>
+              {/* Editor */}
+              <div className="flex-1 overflow-hidden">
+                <MarkdownEditor
+                  key={selectedPath}
+                  initialContent={currentNote.content}
+                  onSave={handleSave}
+                  onChange={handleContentChange}
+                  onWikiLinkClick={handleWikiLinkClick}
+                  onTagClick={handleTagClick}
+                />
+              </div>
+
+              {/* Status bar */}
+              <div className="bg-slate-100 border-t px-4 py-1 flex items-center justify-between text-xs text-gray-600">
+                <div className="flex items-center gap-4">
+                  <span>{wordCount} words</span>
+                  <span>{charCount} characters</span>
+                  <span>0 backlinks</span>
+                  {currentNoteModified && (
+                    <span className="text-gray-500">
+                      Modified: {new Date(currentNoteModified).toLocaleString()}
+                    </span>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Tabs */}
-            {tabs.length > 0 && (
-              <div className="bg-white border-b flex items-center overflow-x-auto">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.path}
-                    onClick={() => handleSelectNote(tab.path)}
-                    className={`px-4 py-2 text-sm border-r flex items-center gap-2 hover:bg-slate-50 transition-colors ${
-                      activeTab === tab.path ? 'bg-slate-100' : ''
-                    }`}
-                  >
-                    <File className="w-3 h-3" />
-                    <span>{tab.title}</span>
-                    <button
-                      onClick={(e) => closeTab(tab.path, e)}
-                      className="hover:bg-slate-200 rounded p-0.5"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {currentNote ? (
-              <>
-                {/* File header with metadata */}
-                <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold">{selectedPath?.split('/').pop()}</h2>
-                    {currentNoteModified && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Modified: {new Date(currentNoteModified).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* User menu */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
-                    >
-                      {user?.username.charAt(0).toUpperCase()}
-                    </button>
-                    
-                    {showUserMenu && (
-                      <div className="absolute right-0 top-10 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
-                        <div className="px-4 py-2 border-b">
-                          <div className="text-sm font-semibold">{user?.username}</div>
-                          <div className="text-xs text-gray-500">{user?.email}</div>
-                        </div>
-                        <button
-                          onClick={toggleDarkMode}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
-                        >
-                          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                          {darkMode ? 'Light Mode' : 'Dark Mode'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            handleLogout();
-                            setShowUserMenu(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2 text-red-600"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Editor */}
-                <div className="flex-1 overflow-hidden">
-                  <MarkdownEditor
-                    key={selectedPath}
-                    initialContent={currentNote.content}
-                    onSave={handleSave}
-                    onChange={handleContentChange}
-                    onWikiLinkClick={handleWikiLinkClick}
-                    onTagClick={handleTagClick}
-                  />
-                </div>
-
-                {/* Status bar */}
-                <div className="bg-slate-100 border-t px-4 py-1 flex items-center justify-between text-xs text-gray-600">
-                  <div className="flex items-center gap-4">
-                    <span>{wordCount} words</span>
-                    <span>{charCount} characters</span>
-                    <span>0 backlinks</span>
-                  </div>
-                  <div>
-                    {selectedPath}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-500">
-                <div className="text-center">
-                  <h2 className="text-2xl font-semibold mb-2">Welcome to Your Vault</h2>
-                  <p className="text-sm">Select a note from the sidebar or create a new one</p>
+                <div>
+                  {selectedPath}
                 </div>
               </div>
-            )}
-          </main>
-        </div>
+            </>
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold mb-2">Welcome to Your Vault</h2>
+                <p className="text-sm">Select a note from the sidebar or create a new one</p>
+              </div>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
