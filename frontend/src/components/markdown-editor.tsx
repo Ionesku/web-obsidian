@@ -65,7 +65,7 @@ export function MarkdownEditor({
   const [isVimMode, setIsVimMode] = useState(vimMode);
 
   // Use production-grade autosave hook
-  const { save: autosaveContent, status, lastSaved, error, forceFlush } = useAutosave({
+  const { save: autosaveContent, status, lastSaved, error, forceFlush, reset } = useAutosave({
     onSave: async (content) => {
       if (onSave) {
         await onSave(content);
@@ -77,6 +77,13 @@ export function MarkdownEditor({
     enabled: autoSave,
     debug,
   });
+
+  // Reset to "saved" status when loading a file from server
+  useEffect(() => {
+    if (initialContent) {
+      reset();
+    }
+  }, [noteId, reset]);
 
   // Notify parent of autosave status changes
   useEffect(() => {

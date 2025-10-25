@@ -41,6 +41,7 @@ interface UseAutosaveReturn {
   lastSaved: Date | null;
   error: string | null;
   forceFlush: () => void;
+  reset: () => void;
 }
 
 export function useAutosave({
@@ -313,12 +314,22 @@ export function useAutosave({
     };
   }, [cleanup]);
 
+  // Reset to "saved" state (for when loading a file from server)
+  const reset = useCallback(() => {
+    cleanup();
+    setStatus('saved');
+    setLastSaved(new Date());
+    setError(null);
+    lastSavedHashRef.current = ''; // Will be recalculated on next change
+  }, [cleanup]);
+
   return {
     save: debouncedSave,
     status,
     lastSaved,
     error,
     forceFlush,
+    reset,
   };
 }
 
