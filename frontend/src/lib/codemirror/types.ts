@@ -9,6 +9,8 @@ export interface EditorProps {
   noteId?: number;
   onSave?: (content: string) => void;
   onChange?: (content: string) => void;
+  onWikiLinkClick?: (noteTitle: string) => void;
+  onTagClick?: (tag: string) => void;
   vimMode?: boolean;
   autoSave?: boolean;
   autoSaveDelay?: number;

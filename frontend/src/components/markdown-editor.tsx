@@ -35,9 +35,10 @@ import { markdown } from '@codemirror/lang-markdown';
 import { vim } from '@replit/codemirror-vim';
 
 // Custom extensions
-import { wikiLinkPlugin, wikiLinkTheme } from '@/lib/codemirror/wiki-links';
+import { wikiLinkPlugin, wikiLinkTheme, handleWikiLinkClick } from '@/lib/codemirror/wiki-links';
 import { wikiLinkAutocomplete } from '@/lib/codemirror/autocomplete';
 import { transclusionPlugin, transclusionTheme } from '@/lib/codemirror/transclusion';
+import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 
@@ -49,6 +50,8 @@ export function MarkdownEditor({
   noteId,
   onSave,
   onChange,
+  onWikiLinkClick,
+  onTagClick,
   vimMode = false,
   autoSave = true,
   autoSaveDelay = 2000,
@@ -141,6 +144,36 @@ export function MarkdownEditor({
         wikiLinkAutocomplete(),
         transclusionPlugin,
         transclusionTheme,
+        tagPlugin,
+        tagTheme,
+
+        // Click handler for wiki links and tags
+        EditorView.domEventHandlers({
+          click: (event, view) => {
+            const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+            if (pos === null) return false;
+
+            // Ctrl/Cmd+Click for wiki links
+            if ((event.ctrlKey || event.metaKey) && onWikiLinkClick) {
+              const handled = handleWikiLinkClick(view, pos, onWikiLinkClick);
+              if (handled) {
+                event.preventDefault();
+                return true;
+              }
+            }
+
+            // Regular click for tags
+            if (onTagClick) {
+              const handled = handleTagClick(view, pos, onTagClick);
+              if (handled) {
+                event.preventDefault();
+                return true;
+              }
+            }
+
+            return false;
+          },
+        }),
 
         // Editor theme
         EditorView.theme({
@@ -295,22 +328,13 @@ export function MarkdownEditor({
           >
             {isVimMode ? '✓ Vim' : 'Vim'}
           </button>
-          
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
-            title="Save now (Ctrl+S)"
-          >
-            {isSaving ? '💾 Saving...' : '💾 Save'}
-          </button>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          {autoSave && (
+          {isSaving && (
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              Auto-save enabled
+              <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              Saving...
             </span>
           )}
         </div>
@@ -318,16 +342,6 @@ export function MarkdownEditor({
 
       {/* Editor */}
       <div ref={editorRef} className="h-[calc(100%-48px)] overflow-hidden" />
-
-      {/* Status bar */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 py-1 bg-gray-50 border-t text-xs text-gray-600 flex items-center justify-between">
-        <div>
-          {isVimMode && <span className="font-mono">VIM MODE</span>}
-        </div>
-        <div>
-          {isSaving && <span className="text-blue-600">Saving...</span>}
-        </div>
-      </div>
     </div>
   );
 }
