@@ -31,36 +31,13 @@ services:
     ports:
       - "80:80"
     depends_on:
-      backend:
-        condition: service_started
+      - backend
     restart: unless-stopped
-    networks:
-      - default
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Optional: Backup service
-  backup:
-    image: alpine:latest
-    container_name: obsidian-backup
-    volumes:
-      - ./data:/data:ro
-      - ./backups:/backups
-    command: >
-      sh -c '
-        while true; do
-          echo "Creating backup at $$(date)"
-          tar -czf /backups/vault-backup-$$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
-          echo "Cleaning old backups (keeping last 30 days)"
-          find /backups -name "vault-backup-*.tar.gz" -mtime +30 -delete
-          echo "Next backup in 24 hours"
-          sleep 86400
-        done
-      '
-    restart: unless-stopped
 
 volumes:
   data:

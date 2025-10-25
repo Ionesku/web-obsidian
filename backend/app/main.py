@@ -56,10 +56,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(files.router, prefix="/api/files", tags=["Files"])
-app.include_router(search.router, prefix="/api/search", tags=["Search"])
-app.include_router(canvas.router, prefix="/api/canvas", tags=["Canvas"])
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(files.router, prefix="/files", tags=["Files"])
+app.include_router(search.router, prefix="/search", tags=["Search"])
+app.include_router(canvas.router, prefix="/canvas", tags=["Canvas"])
 
 
 @app.get("/")
