@@ -62,7 +62,6 @@ export function MarkdownEditor({
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const [isVimMode, setIsVimMode] = useState(vimMode);
 
   // Use production-grade autosave hook
   const { save: autosaveContent, status, lastSaved, error, forceFlush, reset } = useAutosave({
@@ -260,7 +259,7 @@ export function MarkdownEditor({
 
     const state = EditorState.create({
       doc: initialContent,
-      extensions: createExtensions(isVimMode),
+      extensions: createExtensions(vimMode || false),
     });
 
     const view = new EditorView({
@@ -295,23 +294,21 @@ export function MarkdownEditor({
   }, [autosaveContent]);
 
   /**
-   * Toggle Vim mode
+   * Update editor when vim mode changes
    */
-  const toggleVimMode = useCallback(() => {
+  useEffect(() => {
     if (!viewRef.current) return;
 
     const content = viewRef.current.state.doc.toString();
-    const newVimMode = !isVimMode;
 
     // Recreate editor with new vim mode
     const state = EditorState.create({
       doc: content,
-      extensions: createExtensions(newVimMode),
+      extensions: createExtensions(vimMode || false),
     });
 
     viewRef.current.setState(state);
-    setIsVimMode(newVimMode);
-  }, [isVimMode, createExtensions]);
+  }, [vimMode, createExtensions]);
 
   /**
    * Get current content
@@ -337,25 +334,8 @@ export function MarkdownEditor({
 
   return (
     <div className={`relative h-full ${className}`}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleVimMode}
-            className={`px-3 py-1 text-sm rounded transition-colors ${
-              isVimMode
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-            title="Toggle Vim keybindings"
-          >
-            {isVimMode ? '✓ Vim' : 'Vim'}
-          </button>
-        </div>
-      </div>
-
       {/* Editor */}
-      <div ref={editorRef} className="h-[calc(100%-48px)] overflow-hidden" />
+      <div ref={editorRef} className="h-full overflow-hidden" />
     </div>
   );
 }

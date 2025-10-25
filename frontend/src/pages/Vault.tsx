@@ -30,6 +30,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   GripVertical,
+  Terminal,
 } from 'lucide-react';
 
 interface FileNode {
@@ -74,6 +75,7 @@ export function VaultPage() {
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
+  const [vimMode, setVimMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(256); // 64rem = 256px
   const [isResizing, setIsResizing] = useState(false);
@@ -487,6 +489,17 @@ export function VaultPage() {
         >
           <BookMarked className="w-5 h-5" />
         </button>
+        <button
+          onClick={() => setVimMode(!vimMode)}
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+            vimMode 
+              ? 'bg-green-600 text-white hover:bg-green-700' 
+              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+          title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
+        >
+          <Terminal className="w-5 h-5" />
+        </button>
         
         {/* Spacer */}
         <div className="flex-1" />
@@ -802,6 +815,7 @@ export function VaultPage() {
                   onWikiLinkClick={handleWikiLinkClick}
                   onTagClick={handleTagClick}
                   onAutosaveStatusChange={setAutosaveStatus}
+                  vimMode={vimMode}
                 />
               </div>
 
