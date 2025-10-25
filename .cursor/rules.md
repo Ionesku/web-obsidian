@@ -424,3 +424,6 @@ Follow conventional commits:
 4. Create API endpoints for persistence
 5. Implement undo/redo functionality
 6. Add keyboard shortcuts and gestures
+
+### Some else
+You have no access to docker
