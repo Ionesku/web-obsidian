@@ -7,6 +7,7 @@ from app.auth import get_current_user
 from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, RenameRequest
 from app.vault_service import VaultService
 from app.search_service import SearchService
+from app.search import get_indexer
 
 router = APIRouter()
 
@@ -60,8 +61,19 @@ async def create_file(
     try:
         result = await vault.write_file(note.path, note.content)
         
-        # Index the file for search
+        # Index the file for search (old system)
         search.index_file(note.path, note.content)
+        
+        # Index for Whoosh (new advanced search)
+        indexer = get_indexer()
+        # TODO: Extract metadata from content (tags, props)
+        indexer.upsert_document(
+            path=note.path,
+            content=note.content,
+            name=Path(note.path).name,
+            tags=[],  # Will be extracted from content
+            props={},  # Will be extracted from frontmatter
+        )
         
         return result
     except ValueError as e:
@@ -82,8 +94,18 @@ async def update_file(
     try:
         result = await vault.write_file(path, note.content)
         
-        # Update search index
+        # Update search index (old system)
         search.index_file(path, note.content)
+        
+        # Update Whoosh index (new advanced search)
+        indexer = get_indexer()
+        indexer.upsert_document(
+            path=path,
+            content=note.content,
+            name=Path(path).name,
+            tags=[],  # TODO: Extract from content
+            props={},  # TODO: Extract from frontmatter
+        )
         
         return result
     except ValueError as e:

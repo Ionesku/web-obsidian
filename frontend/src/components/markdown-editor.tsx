@@ -42,6 +42,7 @@ import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 import { useAutosave } from '@/hooks/useAutosave';
+import { searchEngine } from '@/search/engine';
 
 /**
  * Main Markdown Editor Component
@@ -90,8 +91,23 @@ export function MarkdownEditor({
     if (onSaveRef.current) {
       await onSaveRef.current(content);
     }
+    
+    // Index file for search after successful save
+    if (noteId) {
+      try {
+        await searchEngine.indexLocal({
+          path: noteId,
+          content,
+          mtime: Date.now(),
+          hash: '', // Will be calculated by engine
+        });
+      } catch (error) {
+        console.error('Failed to index file:', error);
+      }
+    }
+    
     return {}; // Could return { etag } if backend supports it
-  }, []); // Empty deps - function is stable, uses ref
+  }, [noteId]); // Include noteId in deps
 
   // Use production-grade autosave hook
   const { save: autosaveContent, status, lastSaved, error, forceFlush, reset } = useAutosave({

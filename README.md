@@ -28,12 +28,33 @@ A comprehensive full-stack knowledge management system with note-taking, visual 
 - **Pan & Zoom** - Navigate large canvases easily
 - **Save/Load** - Export and import canvas state as JSON
 
-### Frontend - Daily Notes (NEW!)
+### Frontend - Daily Notes
 - **Calendar Widget** - Visual date picker with shadcn/ui
 - **Auto-Creation** - Daily notes created with YYYY-MM-DD format
 - **Template System** - Customizable templates with variable substitution
 - **Default Templates** - Daily, Weekly, and Meeting note templates
 - **Custom Templates** - Create and manage your own templates
+
+### Advanced Search System (NEW! ⭐)
+- **Dual-Layer Architecture** - Local (IndexedDB) + Server (Whoosh) for optimal performance
+- **Lightning Fast** - Local metadata search < 50ms, full-text search < 200ms
+- **Rich Query Syntax** - Tags, properties, tasks, links, blocks, sections, and more
+- **Boolean Logic** - AND, OR, NOT operators with grouping support
+- **Federated Execution** - Intelligently splits queries between local and server
+- **Web Worker** - Background indexing doesn't block UI
+- **Auto-Indexing** - Files automatically indexed on save
+- **Obsidian-Inspired** - Familiar query syntax for Obsidian users
+
+**Query Examples:**
+```
+tag:work task:todo              # Work tasks
+[priority:high]                 # High priority notes
+"meeting notes"                 # Full-text phrase search
+link:[[Research]]               # Files linking to Research
+(work OR personal) -archive     # Boolean logic
+```
+
+📖 **Documentation**: See [SEARCH_README.md](./SEARCH_README.md) and [SEARCH_IMPLEMENTATION.md](./SEARCH_IMPLEMENTATION.md)
 
 ## 📦 Installation
 

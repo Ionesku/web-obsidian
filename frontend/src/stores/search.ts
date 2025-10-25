@@ -1,58 +1,112 @@
-import { create } from 'zustand';
-import api from '@/lib/api';
+// ============================================================================
+// SEARCH STORE - Zustand store for search state
+// ============================================================================
 
-interface SearchResult {
-  path: string;
-  title: string;
-  preview: string;
-  score: number;
-}
+import { create } from 'zustand';
+import type { SearchResult, IndexStatus } from '../search/types';
 
 interface SearchState {
+  // Current search
   query: string;
-  results: SearchResult[];
+  result: SearchResult | null;
   isSearching: boolean;
   error: string | null;
   
-  search: (query: string) => Promise<void>;
-  searchByTag: (tag: string) => Promise<void>;
-  clearSearch: () => void;
+  // Index status
+  indexStatus: IndexStatus;
+  
+  // Search history
+  history: string[];
+  pinnedQueries: string[];
+  
+  // Actions
   setQuery: (query: string) => void;
+  setResult: (result: SearchResult | null) => void;
+  setSearching: (isSearching: boolean) => void;
+  setError: (error: string | null) => void;
+  setIndexStatus: (status: IndexStatus) => void;
+  
+  addToHistory: (query: string) => void;
+  clearHistory: () => void;
+  
+  pinQuery: (query: string) => void;
+  unpinQuery: (query: string) => void;
+  
+  reset: () => void;
 }
 
 export const useSearchStore = create<SearchState>((set) => ({
+  // Initial state
   query: '',
-  results: [],
+  result: null,
   isSearching: false,
   error: null,
-
-  search: async (query: string) => {
-    if (!query.trim()) {
-      set({ results: [], query: '' });
-      return;
-    }
-
-    set({ isSearching: true, error: null, query });
-    try {
-      const results = await api.search(query);
-      set({ results, isSearching: false });
-    } catch (error: any) {
-      set({ error: error.message, isSearching: false, results: [] });
-    }
+  indexStatus: {
+    state: 'idle',
+    filesIndexed: 0,
+    totalFiles: 0,
+    queueSize: 0,
   },
-
-  searchByTag: async (tag: string) => {
-    set({ isSearching: true, error: null, query: `#${tag}` });
-    try {
-      const results = await api.searchByTag(tag);
-      set({ results, isSearching: false });
-    } catch (error: any) {
-      set({ error: error.message, isSearching: false, results: [] });
-    }
-  },
-
-  clearSearch: () => set({ query: '', results: [], error: null }),
+  history: [],
+  pinnedQueries: [],
   
-  setQuery: (query: string) => set({ query }),
+  // Actions
+  setQuery: (query) => set({ query }),
+  setResult: (result) => set({ result }),
+  setSearching: (isSearching) => set({ isSearching }),
+  setError: (error) => set({ error }),
+  setIndexStatus: (indexStatus) => set({ indexStatus }),
+  
+  addToHistory: (query) =>
+    set((state) => {
+      if (!query.trim() || state.history.includes(query)) {
+        return state;
+      }
+      return {
+        history: [query, ...state.history.slice(0, 19)], // Keep last 20
+      };
+    }),
+  
+  clearHistory: () => set({ history: [] }),
+  
+  pinQuery: (query) =>
+    set((state) => {
+      if (state.pinnedQueries.includes(query)) {
+        return state;
+      }
+      return {
+        pinnedQueries: [...state.pinnedQueries, query],
+      };
+    }),
+  
+  unpinQuery: (query) =>
+    set((state) => ({
+      pinnedQueries: state.pinnedQueries.filter((q) => q !== query),
+    })),
+  
+  reset: () =>
+    set({
+      query: '',
+      result: null,
+      isSearching: false,
+      error: null,
+    }),
 }));
 
+// Persist history to localStorage
+if (typeof window !== 'undefined') {
+  const savedHistory = localStorage.getItem('search_history');
+  if (savedHistory) {
+    try {
+      const history = JSON.parse(savedHistory);
+      useSearchStore.setState({ history });
+    } catch (e) {
+      console.error('Failed to load search history', e);
+    }
+  }
+  
+  // Subscribe to history changes
+  useSearchStore.subscribe((state) => {
+    localStorage.setItem('search_history', JSON.stringify(state.history));
+  });
+}
