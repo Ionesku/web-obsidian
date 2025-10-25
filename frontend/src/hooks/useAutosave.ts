@@ -31,6 +31,7 @@ interface UseAutosaveOptions {
   debounceMs?: number;
   maxWaitMs?: number;
   enabled?: boolean;
+  debug?: boolean;
   onConflict?: (localContent: string, serverEtag: string) => void;
 }
 
@@ -47,8 +48,15 @@ export function useAutosave({
   debounceMs = 500,
   maxWaitMs = 5000,
   enabled = true,
+  debug = false,
   onConflict,
 }: UseAutosaveOptions): UseAutosaveReturn {
+  
+  const log = useCallback((...args: any[]) => {
+    if (debug) {
+      console.log(...args);
+    }
+  }, [debug]);
   
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -90,14 +98,14 @@ export function useAutosave({
     // Hash-based deduplication
     const hash = fastHash(content);
     if (hash === lastSavedHashRef.current) {
-      console.log('⏭️  Skipping save (content unchanged)');
+      log('⏭️  Skipping save (content unchanged)');
       setStatus('saved');
       return;
     }
 
     // If already saving, queue this content
     if (inFlightRef.current) {
-      console.log('⏳ Queueing save (request in flight)');
+      log('⏳ Queueing save (request in flight)');
       latestContentRef.current = content;
       return;
     }
@@ -108,7 +116,7 @@ export function useAutosave({
     setError(null);
 
     try {
-      console.log('💾 Saving...', { hash, etag: etagRef.current });
+      log('💾 Saving...', { hash, etag: etagRef.current });
       
       const result = await onSave(content, etagRef.current ?? undefined);
       
@@ -120,7 +128,7 @@ export function useAutosave({
       retryCountRef.current = 0;
       setStatus('saved');
       setLastSaved(new Date());
-      console.log('✅ Saved successfully');
+      log('✅ Saved successfully');
 
       // Auto-transition from 'saved' to 'idle' after 2 seconds
       setTimeout(() => {
@@ -129,11 +137,11 @@ export function useAutosave({
       
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.log('🚫 Save aborted');
+        log('🚫 Save aborted');
         return;
       }
 
-      console.error('❌ Save failed:', err);
+      log('❌ Save failed:', err);
 
       // Handle different error types
       if (err.status === 412 || err.message?.includes('412')) {
@@ -171,7 +179,7 @@ export function useAutosave({
           const delay = getBackoffDelay(retryCountRef.current - 1);
           setStatus('error');
           setError(`Retrying in ${Math.round(delay / 1000)}s... (attempt ${retryCountRef.current}/5)`);
-          console.log(`🔄 Retry ${retryCountRef.current}/5 in ${delay}ms`);
+          log(`🔄 Retry ${retryCountRef.current}/5 in ${delay}ms`);
           
           retryTimeoutRef.current = setTimeout(() => {
             executeSave(content);
@@ -192,11 +200,11 @@ export function useAutosave({
       latestContentRef.current = null;
       
       if (nextContent && nextContent !== content) {
-        console.log('🔄 Processing queued save');
+        log('🔄 Processing queued save');
         setTimeout(() => executeSave(nextContent), 100);
       }
     }
-  }, [onSave, onConflict]);
+  }, [onSave, onConflict, log]);
 
   // Debounced save with maxWait
   const debouncedSave = useCallback((content: string, immediate: boolean = false) => {
@@ -221,7 +229,7 @@ export function useAutosave({
       
       if (remainingMaxWait > 0) {
         maxWaitTimeoutRef.current = setTimeout(() => {
-          console.log('⏰ maxWait reached, forcing save');
+          log('⏰ maxWait reached, forcing save');
           maxWaitTimeoutRef.current = null;
           lastChangeTimeRef.current = Date.now();
           executeSave(content);
@@ -251,14 +259,14 @@ export function useAutosave({
   // Listen for online/offline events
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 Back online');
+      log('🌐 Back online');
       if (latestContentRef.current) {
         executeSave(latestContentRef.current);
       }
     };
 
     const handleOffline = () => {
-      console.log('📡 Went offline');
+      log('📡 Went offline');
       setStatus('offline');
     };
 
@@ -269,14 +277,14 @@ export function useAutosave({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [executeSave]);
+  }, [executeSave, log]);
 
   // Save on page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (latestContentRef.current && navigator.sendBeacon) {
         // Use sendBeacon for reliable final save
-        console.log('📤 Sending beacon save');
+        log('📤 Sending beacon save');
         // Note: This would need a special endpoint that accepts beacon POST
         forceFlush();
       }
@@ -284,7 +292,7 @@ export function useAutosave({
 
     const handleVisibilityChange = () => {
       if (document.hidden && latestContentRef.current) {
-        console.log('👁️ Page hidden, forcing save');
+        log('👁️ Page hidden, forcing save');
         forceFlush();
       }
     };
@@ -296,7 +304,7 @@ export function useAutosave({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [forceFlush]);
+  }, [forceFlush, log]);
 
   // Cleanup on unmount
   useEffect(() => {

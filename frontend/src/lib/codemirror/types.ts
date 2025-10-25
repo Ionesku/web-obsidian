@@ -3,6 +3,13 @@
  */
 import { Extension } from '@codemirror/state';
 import { Note } from '../db';
+import type { SaveStatus } from '@/hooks/useAutosave';
+
+export interface AutosaveStatus {
+  status: SaveStatus;
+  lastSaved: Date | null;
+  error: string | null;
+}
 
 export interface EditorProps {
   initialContent?: string;
@@ -14,6 +21,8 @@ export interface EditorProps {
   vimMode?: boolean;
   autoSave?: boolean;
   autoSaveDelay?: number;
+  debug?: boolean;
+  onAutosaveStatusChange?: (status: AutosaveStatus) => void;
   className?: string;
 }
 

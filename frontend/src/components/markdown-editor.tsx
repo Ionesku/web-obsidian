@@ -42,7 +42,6 @@ import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 import { useAutosave } from '@/hooks/useAutosave';
-import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
 
 /**
  * Main Markdown Editor Component
@@ -57,6 +56,8 @@ export function MarkdownEditor({
   vimMode = false,
   autoSave = true,
   autoSaveDelay = 500,
+  debug = false,
+  onAutosaveStatusChange,
   className = '',
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -74,7 +75,15 @@ export function MarkdownEditor({
     debounceMs: autoSaveDelay,
     maxWaitMs: 5000, // Force save after 5 seconds of continuous typing
     enabled: autoSave,
+    debug,
   });
+
+  // Notify parent of autosave status changes
+  useEffect(() => {
+    if (onAutosaveStatusChange) {
+      onAutosaveStatusChange({ status, lastSaved, error });
+    }
+  }, [status, lastSaved, error, onAutosaveStatusChange]);
 
   /**
    * Create editor extensions
@@ -328,8 +337,6 @@ export function MarkdownEditor({
             {isVimMode ? '✓ Vim' : 'Vim'}
           </button>
         </div>
-
-        <SaveStatusIndicator status={status} lastSaved={lastSaved} error={error} />
       </div>
 
       {/* Editor */}

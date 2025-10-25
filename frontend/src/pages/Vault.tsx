@@ -6,6 +6,8 @@ import { useSearchStore } from '@/stores/search';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/markdown-editor';
+import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
+import type { AutosaveStatus } from '@/lib/codemirror/types';
 import {
   File,
   Folder,
@@ -75,6 +77,11 @@ export function VaultPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(256); // 64rem = 256px
   const [isResizing, setIsResizing] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>({
+    status: 'idle',
+    lastSaved: null,
+    error: null,
+  });
   
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -794,12 +801,19 @@ export function VaultPage() {
                   onChange={handleContentChange}
                   onWikiLinkClick={handleWikiLinkClick}
                   onTagClick={handleTagClick}
+                  onAutosaveStatusChange={setAutosaveStatus}
                 />
               </div>
 
               {/* Status bar */}
               <div className="bg-slate-100 border-t px-4 py-1 flex items-center justify-between text-xs text-gray-600">
                 <div className="flex items-center gap-4">
+                  <SaveStatusIndicator 
+                    status={autosaveStatus.status} 
+                    lastSaved={autosaveStatus.lastSaved} 
+                    error={autosaveStatus.error} 
+                  />
+                  <span className="text-gray-400">•</span>
                   <span>{wordCount} words</span>
                   <span>{charCount} characters</span>
                   <span>0 backlinks</span>
