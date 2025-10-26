@@ -40,7 +40,12 @@ import { transclusionPlugin, transclusionTheme } from '@/lib/codemirror/transclu
 import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { searchHighlight, createSearchAPI, type SearchAPI } from '@/lib/codemirror/search-highlight';
 import { getLanguageSupport } from '@/lib/codemirror/code-languages';
-import { obsidianTheme, obsidianSyntaxHighlighting } from '@/lib/codemirror/theme';
+import {
+  darkTheme,
+  darkSyntaxHighlighting,
+  lightTheme,
+  lightSyntaxHighlighting,
+} from '@/lib/codemirror/theme';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -68,6 +73,9 @@ export function MarkdownEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const searchAPIRef = useRef<SearchAPI | null>(null);
+  const [theme, setTheme] = useState(() => (
+    document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  ));
   
   // Use refs to avoid recreating editor extensions on every change
   const onSaveRef = useRef(onSave);
@@ -123,11 +131,22 @@ export function MarkdownEditor({
     }
   }, [status, lastSaved, error, onAutosaveStatusChange]);
 
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   /**
    * Create editor extensions
    */
   const createExtensions = useCallback(
-    (vimEnabled: boolean): Extension[] => {
+    (vimEnabled: boolean, currentTheme: string): Extension[] => {
       const extensions: Extension[] = [
         // Make editor editable
         EditorView.editable.of(true),
@@ -143,7 +162,6 @@ export function MarkdownEditor({
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
         indentOnInput(),
-        obsidianSyntaxHighlighting,
         bracketMatching(),
         closeBrackets(),
         rectangularSelection(),
@@ -214,8 +232,10 @@ export function MarkdownEditor({
           },
         }),
 
-        // Editor theme
-        obsidianTheme,
+        // Editor theme & syntax highlighting
+        currentTheme === 'dark'
+          ? [darkTheme, darkSyntaxHighlighting]
+          : [lightTheme, lightSyntaxHighlighting],
 
         // Update callback
         EditorView.updateListener.of((update) => {
@@ -264,7 +284,7 @@ export function MarkdownEditor({
 
     const state = EditorState.create({
       doc: initialContent,
-      extensions: createExtensions(vimMode || false),
+      extensions: createExtensions(vimMode || false, theme),
     });
 
     const view = new EditorView({
@@ -375,17 +395,18 @@ export function MarkdownEditor({
   }, [searchQuery, onSearchStateChange]);
 
   /**
-   * Update editor when vim mode changes
-   * Don't depend on createExtensions to avoid unnecessary re-renders
+   * Update editor when vim mode or theme changes
    */
   const vimModeRef = useRef(vimMode);
+  const themeRef = useRef(theme);
   
   useEffect(() => {
     if (!viewRef.current) return;
     
-    // Only update if vim mode actually changed
-    if (vimModeRef.current === vimMode) return;
+    // Only update if vim mode or theme actually changed
+    if (vimModeRef.current === vimMode && themeRef.current === theme) return;
     vimModeRef.current = vimMode;
+    themeRef.current = theme;
 
     const content = viewRef.current.state.doc.toString();
     const cursorPos = viewRef.current.state.selection.main.head;
@@ -393,12 +414,12 @@ export function MarkdownEditor({
     // Recreate editor state with new vim mode
     const state = EditorState.create({
       doc: content,
-      extensions: createExtensions(vimMode || false),
+      extensions: createExtensions(vimMode, theme),
       selection: { anchor: cursorPos, head: cursorPos },
     });
 
     viewRef.current.setState(state);
-  }, [vimMode]);
+  }, [vimMode, theme, createExtensions]);
 
   /**
    * Get current content
