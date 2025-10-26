@@ -9,8 +9,11 @@ import {
   ViewPlugin,
   ViewUpdate,
   WidgetType,
+  RangeSetBuilder,
+  StateField,
+  StateEffect,
 } from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
+import { syntaxTree } from '@codemirror/language';
 import { notesDB } from '../db';
 
 /**
@@ -143,85 +146,102 @@ async function loadTransclusion(noteTitle: string): Promise<string | null> {
   }
 }
 
-/**
- * Find transclusions in document
- */
-function findTransclusions(doc: string) {
-  const transclusions: Array<{ title: string; from: number; to: number }> = [];
-  const regex = /!\[\[([^\]]+)\]\]/g;
-  let match;
+// This state field will hold our decorations
+const transclusionDecorations = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, transaction) {
+    // Handle changes and effects here
+    if (transaction.docChanged) {
+      // If doc changed, we might need to re-evaluate transclusions
+      // This can be optimized, but for now, let's just clear
+      return Decoration.none; 
+    }
+    for (let effect of transaction.effects) {
+      if (effect.is(addTransclusionEffect)) {
+        return decorations.update({ add: effect.value, sort: true });
+      }
+    }
+    return decorations;
+  }
+});
 
-  while ((match = regex.exec(doc)) !== null) {
-    transclusions.push({
-      title: match[1],
-      from: match.index,
-      to: match.index + match[0].length,
+// An effect to add our decorations
+const addTransclusionEffect = StateEffect.define<Decoration[]>();
+
+
+function findTransclusions(view: EditorView) {
+  const decorations: Decoration[] = [];
+  const doc = view.state.doc;
+
+  for (const { from, to } of view.visibleRanges) {
+    syntaxTree(view.state).iterate({
+      from,
+      to,
+      enter: (node) => {
+        if (node.name.includes('Transclusion')) { // Assuming your syntax highlighting marks this up
+          const line = doc.lineAt(node.from);
+          const text = doc.sliceString(node.from, node.to);
+          const match = /!\[\[([^\]]+)\]\]/.exec(text);
+          if (match) {
+            const noteTitle = match[1];
+
+            // Replace the entire line
+            const deco = Decoration.replace({
+              widget: new TransclusionWidget(noteTitle, null, true), // Start with loading state
+            });
+            decorations.push(deco.range(line.from, line.to));
+
+            // Asynchronously load content and update the widget
+            loadTransclusion(noteTitle).then(content => {
+              const newDeco = Decoration.replace({
+                widget: new TransclusionWidget(noteTitle, content, false),
+              });
+              
+              // We need to find the line again as the doc could have changed
+              const currentDoc = view.state.doc.toString();
+              const newMatchPos = currentDoc.indexOf(text);
+
+              if (newMatchPos !== -1) {
+                 const newLine = view.state.doc.lineAt(newMatchPos);
+                 view.dispatch({
+                    effects: addTransclusionEffect.of([newDeco.range(newLine.from, newLine.to)])
+                 });
+              }
+            });
+          }
+        }
+      },
     });
   }
-
-  return transclusions;
+  return decorations;
 }
 
-/**
- * Create transclusion decorations
- */
-async function createTransclusionDecorations(view: EditorView): Promise<DecorationSet> {
-  const builder = new RangeSetBuilder<Decoration>();
-  const doc = view.state.doc.toString();
-  const transclusions = findTransclusions(doc);
-
-  for (const transclusion of transclusions) {
-    // Load the transcluded content
-    const content = await loadTransclusion(transclusion.title);
-    
-    // Create widget decoration
-    const widget = Decoration.widget({
-      widget: new TransclusionWidget(transclusion.title, content),
-      side: 1,
-      block: true,
-    });
-
-    // Add decoration after the transclusion syntax
-    builder.add(transclusion.to, transclusion.to, widget);
-  }
-
-  return builder.finish();
-}
 
 /**
  * Transclusion view plugin
  */
 export const transclusionPlugin = ViewPlugin.fromClass(
   class {
-    decorations: DecorationSet;
-    isUpdating = false;
-
     constructor(view: EditorView) {
-      this.decorations = Decoration.none;
       this.updateDecorations(view);
     }
 
-    async updateDecorations(view: EditorView) {
-      if (this.isUpdating) return;
-      this.isUpdating = true;
-      
-      try {
-        this.decorations = await createTransclusionDecorations(view);
-        view.dispatch({ effects: [] }); // Trigger view update
-      } finally {
-        this.isUpdating = false;
-      }
-    }
-
     update(update: ViewUpdate) {
-      if (update.docChanged) {
+      if (update.docChanged || update.viewportChanged) {
         this.updateDecorations(update.view);
       }
     }
-
-    destroy() {
-      // Cleanup if needed
+    
+    updateDecorations(view: EditorView) {
+        const decorations = findTransclusions(view);
+        view.dispatch({
+            effects: addTransclusionEffect.of(decorations)
+        });
     }
+
+    destroy() {}
   },
   {
     decorations: (v) => v.decorations,
