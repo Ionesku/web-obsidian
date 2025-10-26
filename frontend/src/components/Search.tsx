@@ -2,7 +2,7 @@
 // SEARCH COMPONENT - Advanced search UI with query syntax
 // ============================================================================
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef } from 'react';
 import { federatedSearch, explainSearch } from '../search/parser/federation';
 import type { SearchResult, SearchHit } from '../search/types';
 import { Input } from './ui/input';
@@ -14,7 +14,7 @@ interface SearchProps {
   initialQuery?: string;
 }
 
-export function Search({ onResultClick, initialQuery }: SearchProps) {
+export const Search = forwardRef<HTMLInputElement, SearchProps>(({ onResultClick, initialQuery }, ref) => {
   const [query, setQuery] = useState(initialQuery || '');
   const [result, setResult] = useState<SearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -111,12 +111,12 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
       <div className="p-4 border-b">
         <div className="flex gap-2 mb-3">
           <Input
+            ref={ref}
             type="text"
             placeholder="Search: tag:work OR path:notes/ [status:todo]"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             className="flex-1"
-            autoFocus
           />
           <Button
             variant="outline"
@@ -261,7 +261,7 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
       )}
     </div>
   );
-}
+});
 
 // Search hit card component
 function SearchHitCard({ 

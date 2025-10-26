@@ -144,31 +144,49 @@ Happy note-taking! 📝
         return {'source_path': source_path, 'destination_path': destination_path, 'status': 'copied'}
     
     async def list_files(self, folder: str = '') -> List[Dict]:
-        """List all markdown files in vault"""
-        base = self.vault_path / folder if folder else self.vault_path
+        """List all files and folders in vault"""
         
-        if not base.exists():
-            return []
-        
-        files = []
-        # Only find markdown files, ignore directories
-        for path in base.rglob('*.md'):
-            # Skip dot files/folders, though rglob('*.md') shouldn't hit them
-            if any(part.startswith('.') for part in path.parts):
+        all_nodes = {}
+
+        for p in self.vault_path.rglob('*'):
+            # Skip hidden files/folders except for .gitkeep which indicates an empty folder
+            if any(part.startswith('.') and part != '.gitkeep' for part in p.relative_to(self.vault_path).parts):
                 continue
-                
-            relative = path.relative_to(self.vault_path)
-            stats = path.stat()
             
-            files.append({
-                'path': str(relative).replace('\\', '/'),
-                'name': path.name,
-                'type': 'file', # It's always a file now
-                'mtime': stats.st_mtime,
-                'size': stats.st_size
-            })
-        
-        return sorted(files, key=lambda x: x['mtime'], reverse=True)
+            # Use the parent directory for .gitkeep files
+            current_path = p.parent if p.name == '.gitkeep' else p
+            
+            if str(current_path) in all_nodes:
+                continue
+
+            if not current_path.exists():
+                continue
+
+            # We only care about directories and markdown files
+            if current_path.is_dir() or (current_path.is_file() and current_path.suffix.lower() == '.md'):
+                stats = current_path.stat()
+                all_nodes[str(current_path)] = {
+                    'path': str(current_path.relative_to(self.vault_path)).replace('\\', '/'),
+                    'name': current_path.name,
+                    'type': 'folder' if current_path.is_dir() else 'file',
+                    'mtime': stats.st_mtime,
+                    'size': stats.st_size
+                }
+
+        # Ensure root-level empty folders are included
+        for p in self.vault_path.iterdir():
+             if p.is_dir() and not any(part.startswith('.') for part in p.relative_to(self.vault_path).parts):
+                if str(p) not in all_nodes:
+                    stats = p.stat()
+                    all_nodes[str(p)] = {
+                        'path': str(p.relative_to(self.vault_path)).replace('\\', '/'),
+                        'name': p.name,
+                        'type': 'folder',
+                        'mtime': stats.st_mtime,
+                        'size': stats.st_size
+                    }
+
+        return sorted(list(all_nodes.values()), key=lambda x: x['path'])
     
     async def get_backlinks(self, note_path: str) -> List[Dict]:
         """Find backlinks to a note"""

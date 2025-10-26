@@ -97,6 +97,7 @@ export function VaultPage() {
   const [charCount, setCharCount] = useState(0);
   const [vimMode, setVimMode] = useState(false);
   const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [expandedBookmarkGroups, setExpandedBookmarkGroups] = useState<Set<string>>(new Set());
   // THIS IS THE ONLY STATE WE NEED FOR THE SIDEBAR VISIBILITY
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(256);
@@ -115,6 +116,7 @@ export function VaultPage() {
   
   const sidebarRef = useRef<HTMLDivElement>(null);
   const localSearchInputRef = useRef<HTMLInputElement>(null);
+  const globalSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -123,15 +125,11 @@ export function VaultPage() {
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
         e.preventDefault();
         e.stopPropagation();
-        if (e.shiftKey) {
-          // Global search (Ctrl/Cmd + Shift + F)
-          setShowSearchSidebar(true);
-          setShowFilesSidebar(false);
-        } else {
-          // Local search (Ctrl/Cmd + F)
-          setShowLocalSearch(true);
-          // Focus will be handled by the useEffect below
-        }
+        // Global search (Ctrl/Cmd + F)
+        setShowSearchSidebar(true);
+        setShowFilesSidebar(false);
+        setShowBookmarksSidebar(false);
+        if (!isSidebarOpen) setIsSidebarOpen(true);
       }
       // Quick switcher (Ctrl/Cmd + K or Ctrl/Cmd + P)
       if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyK' || e.code === 'KeyP')) {
@@ -147,7 +145,7 @@ export function VaultPage() {
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [showLocalSearch, showQuickSwitcher, showSearchSidebar, showFilesSidebar]);
+  }, [showLocalSearch, showQuickSwitcher, showSearchSidebar, showFilesSidebar, isSidebarOpen]);
 
   // Focus local search input
   useEffect(() => {
@@ -155,6 +153,13 @@ export function VaultPage() {
       localSearchInputRef.current?.focus();
     }
   }, [showLocalSearch]);
+
+  // Focus global search input
+  useEffect(() => {
+    if (showSearchSidebar && isSidebarOpen) {
+      setTimeout(() => globalSearchInputRef.current?.focus(), 100);
+    }
+  }, [showSearchSidebar, isSidebarOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -258,44 +263,46 @@ export function VaultPage() {
   }, [isResizing]);
 
   // Build file tree from flat file list
-  const buildFileTree = (files: any[]): FileNode[] => {
-    const root: FileNode[] = [];
-    const folderMap: Map<string, FileNode> = new Map();
+  const buildFileTree = (items: FileNode[]): FileNode[] => {
+    const tree: FileNode[] = [];
+    const nodes: { [path: string]: FileNode } = {};
 
-    files.forEach((file) => {
-      const parts = file.path.split('/');
-      let currentLevel = root;
-      let currentPath = '';
-
-      parts.forEach((part, index) => {
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-        const isFile = index === parts.length - 1;
-
-        if (isFile) {
-          currentLevel.push({
-            name: part,
-            path: file.path,
-            type: 'file',
-            modified: file.modified,
-          });
-        } else {
-          let folder = folderMap.get(currentPath);
-          if (!folder) {
-            folder = {
-              name: part,
-              path: currentPath,
-              type: 'folder',
-              children: [],
-            };
-            folderMap.set(currentPath, folder);
-            currentLevel.push(folder);
-          }
-          currentLevel = folder.children!;
-        }
-      });
+    // First pass: create all nodes and store them in a map
+    items.forEach(item => {
+        nodes[item.path] = {
+            ...item,
+            children: [],
+        };
     });
 
-    return root;
+    // Second pass: build the tree structure
+    Object.values(nodes).forEach(node => {
+        const parentPath = node.path.substring(0, node.path.lastIndexOf('/'));
+        
+        if (parentPath && nodes[parentPath]) {
+            nodes[parentPath].children?.push(node);
+        } else {
+            tree.push(node);
+        }
+    });
+
+    // Sort children alphabetically, folders first
+    const sortNodes = (nodesToSort: FileNode[]) => {
+        nodesToSort.sort((a, b) => {
+            if (a.type === 'folder' && b.type === 'file') return -1;
+            if (a.type === 'file' && b.type === 'folder') return 1;
+            return a.name.localeCompare(b.name);
+        });
+        nodesToSort.forEach(node => {
+            if (node.children) {
+                sortNodes(node.children);
+            }
+        });
+    };
+    
+    sortNodes(tree);
+
+    return tree;
   };
 
   // Memoize file tree generation
@@ -649,6 +656,9 @@ export function VaultPage() {
     try {
       const fetchedBookmarks = await api.getBookmarks();
       setBookmarks(fetchedBookmarks);
+      // Automatically expand all groups by default
+      const groups = new Set(fetchedBookmarks.map(b => b.group || 'Uncategorized'));
+      setExpandedBookmarkGroups(groups);
     } catch (error) {
       console.error('Failed to load bookmarks:', error);
     }
@@ -662,6 +672,22 @@ export function VaultPage() {
       console.error('Failed to delete bookmark:', error);
     }
   };
+
+  const toggleBookmarkGroup = (group: string) => {
+    setExpandedBookmarkGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) {
+        next.delete(group);
+      } else {
+        next.add(group);
+      }
+      return next;
+    });
+  };
+
+  const bookmarkGroups = useMemo(() => {
+    return [...new Set(bookmarks.map(b => b.group).filter(Boolean))];
+  }, [bookmarks]);
 
   const groupedBookmarks = useMemo(() => {
     return bookmarks.reduce((acc, bookmark) => {
@@ -775,9 +801,10 @@ export function VaultPage() {
         <AddBookmarkDialog
           isOpen={!!bookmarkingPath}
           onClose={() => setBookmarkingPath(null)}
-          onSuccess={() => { /* maybe show a toast later */ }}
+          onSuccess={loadBookmarks}
           path={bookmarkingPath}
           defaultTitle={bookmarkingPath.split('/').pop()?.replace(/\.md$/, '') || ''}
+          existingGroups={bookmarkGroups}
         />
       )}
       {/* Context Menu */}
@@ -993,6 +1020,7 @@ export function VaultPage() {
           <div className="flex-1 flex flex-col overflow-hidden">
           {showSearchSidebar ? (
               <Search 
+                ref={globalSearchInputRef}
                 key={query}
                 onResultClick={(path) => handleSelectNote(path, query)}
                 initialQuery={query}
@@ -1002,25 +1030,33 @@ export function VaultPage() {
               <h2 className="text-lg font-semibold mb-2">Bookmarks</h2>
               {Object.entries(groupedBookmarks).map(([group, bookmarksInGroup]) => (
                 <div key={group}>
-                  <h3 className="text-sm font-semibold text-gray-500 mb-2">{group}</h3>
-                  <div className="space-y-1">
-                    {bookmarksInGroup.map(bookmark => (
-                      <div key={bookmark.id} className="group flex items-center justify-between p-2 rounded-md hover:bg-slate-100 dark:hover:bg-black/20">
-                        <button
-                          onClick={() => handleSelectNote(bookmark.path)}
-                          className="flex-1 text-left text-sm"
-                        >
-                          {bookmark.title}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteBookmark(bookmark.id)}
-                          className="p-1 rounded hover:bg-slate-200 dark:hover:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-500" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                  <button 
+                    onClick={() => toggleBookmarkGroup(group)}
+                    className="w-full text-left text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1"
+                  >
+                    {expandedBookmarkGroups.has(group) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    {group}
+                  </button>
+                  {expandedBookmarkGroups.has(group) && (
+                    <div className="space-y-1 pl-2 border-l ml-1">
+                      {bookmarksInGroup.map(bookmark => (
+                        <div key={bookmark.id} className="group flex items-center justify-between p-2 rounded-md hover:bg-slate-100 dark:hover:bg-black/20">
+                          <button
+                            onClick={() => handleSelectNote(bookmark.path)}
+                            className="flex-1 text-left text-sm"
+                          >
+                            {bookmark.title}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBookmark(bookmark.id)}
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
