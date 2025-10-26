@@ -6,7 +6,7 @@
 
 import { Extension, StateField, StateEffect } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
-import { search, getSearchQuery, SearchQuery } from '@codemirror/search';
+import { search, getSearchQuery, SearchQuery, setSearchQuery } from '@codemirror/search';
 
 // ============================================================================
 // STATE EFFECTS
@@ -150,10 +150,9 @@ export interface SearchAPI {
 export function createSearchAPI(view: EditorView): SearchAPI {
   return {
     setQuery(query: string) {
-       const searchQuery = new SearchQuery({ search: query, caseSensitive: false });
        view.dispatch({
         effects: [
-          search.of(searchQuery),
+          setSearchQuery.of(new SearchQuery({ search: query, caseSensitive: false })),
           setSearchQueryEffect.of(query)
         ]
       });
@@ -206,7 +205,7 @@ export function createSearchAPI(view: EditorView): SearchAPI {
     clearSearch() {
         view.dispatch({
             effects: [
-                search.of(new SearchQuery({ search: '' })),
+                setSearchQuery.of(new SearchQuery({ search: '' })),
                 setSearchQueryEffect.of('')
             ]
         });
