@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Fuse from 'fuse.js';
 import { api } from '../lib/api';
 import { Input } from './ui/input';
@@ -65,11 +65,11 @@ const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect
   }, []);
 
   // Fuse.js fuzzy search instance
-  const fuse = new Fuse(files, {
+  const fuse = useMemo(() => new Fuse(files, {
     keys: ['name', 'path'],
     includeScore: true,
     threshold: 0.4, // Adjust for more/less fuzzy matching
-  });
+  }), [files]);
 
   // Handle search and display results
   useEffect(() => {
@@ -85,7 +85,7 @@ const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect
       setResults(searchResults);
     }
     setActiveIndex(0); // Reset selection on new results
-  }, [query, files]);
+  }, [query, files, fuse]);
 
 
   // Handle keyboard navigation
