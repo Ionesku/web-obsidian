@@ -14,6 +14,8 @@ from whoosh import scoring
 
 from .indexer import get_indexer, MarkdownIndexer
 from ..auth import get_current_user
+from ..vault_service import VaultService
+from ..models import User
 
 logger = logging.getLogger(__name__)
 
@@ -251,29 +253,32 @@ def extract_regex_prefix(pattern: str) -> str:
 class IndexRequest(BaseModel):
     """Request to index a file"""
     path: str
-    content: str
-    name: str
-    tags: List[str] = []
-    props: Dict[str, Any] = {}
 
 
 @router.post("/index")
 async def index_file(
     req: IndexRequest,
     indexer: MarkdownIndexer = Depends(lambda: get_indexer()),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Index a single file
     
     Called by backend when file is saved.
     """
+    vault = VaultService(current_user.id)
+    try:
+        file_data = await vault.read_file(req.path)
+        content = file_data['content']
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
+
     success = indexer.upsert_document(
         path=req.path,
-        content=req.content,
-        name=req.name,
-        tags=req.tags,
-        props=req.props,
+        content=content,
+        name=req.path.split('/')[-1],
+        tags=[],  # You may want to extract tags from content
+        props={}, # You may want to extract props from content
     )
     
     if not success:

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from typing import List
 from pathlib import Path
+import httpx
 
 from app.auth import get_current_user
 from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, RenameRequest
@@ -49,24 +50,20 @@ async def read_file(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_file(
     note: NoteContent,
-    vault: VaultService = Depends(get_vault_service)
+    vault: VaultService = Depends(get_vault_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Create a new file"""
     try:
         result = await vault.write_file(note.path, note.content)
         
-        # Index for Whoosh search
-        indexer = get_indexer()
-        # Extract metadata from content
-        metadata = extract_metadata_for_index(note.content, note.path)
-        indexer.upsert_document(
-            path=note.path,
-            content=note.content,
-            name=metadata['name'],
-            tags=metadata['tags'],
-            props=metadata['props'],
-        )
-        
+        # Index via API call
+        async with httpx.AsyncClient() as client:
+            # You might need to build the URL dynamically
+            url = f"http://localhost:8000/api/search/index"
+            headers = {"Authorization": f"Bearer {current_user.access_token}"}
+            await client.post(url, json={"path": note.path}, headers=headers)
+            
         return result
     except ValueError as e:
         raise HTTPException(
@@ -79,24 +76,19 @@ async def create_file(
 async def update_file(
     path: str,
     note: NoteContent,
-    vault: VaultService = Depends(get_vault_service)
+    vault: VaultService = Depends(get_vault_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Update a file"""
     try:
         result = await vault.write_file(path, note.content)
-        
-        # Update Whoosh index
-        indexer = get_indexer()
-        # Extract metadata from content
-        metadata = extract_metadata_for_index(note.content, path)
-        indexer.upsert_document(
-            path=path,
-            content=note.content,
-            name=metadata['name'],
-            tags=metadata['tags'],
-            props=metadata['props'],
-        )
-        
+
+        # Index via API call
+        async with httpx.AsyncClient() as client:
+            url = f"http://localhost:8000/api/search/index"
+            headers = {"Authorization": f"Bearer {current_user.access_token}"}
+            await client.post(url, json={"path": path}, headers=headers)
+
         return result
     except ValueError as e:
         raise HTTPException(
@@ -129,27 +121,22 @@ async def delete_file(
 @router.post("/rename")
 async def rename_file(
     request: RenameRequest,
-    vault: VaultService = Depends(get_vault_service)
+    vault: VaultService = Depends(get_vault_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Rename or move a file"""
     try:
         result = await vault.rename_file(request.old_path, request.new_path)
         
-        # Update Whoosh index
+        # Update Whoosh index via API
         indexer = get_indexer()
         indexer.delete_document(request.old_path)
         
-        # Read and reindex with new path
-        file_data = await vault.read_file(request.new_path)
-        metadata = extract_metadata_for_index(file_data['content'], request.new_path)
-        indexer.upsert_document(
-            path=request.new_path,
-            content=file_data['content'],
-            name=metadata['name'],
-            tags=metadata['tags'],
-            props=metadata['props'],
-        )
-        
+        async with httpx.AsyncClient() as client:
+            url = f"http://localhost:8000/api/search/index"
+            headers = {"Authorization": f"Bearer {current_user.access_token}"}
+            await client.post(url, json={"path": request.new_path}, headers=headers)
+            
         return result
     except (FileNotFoundError, ValueError) as e:
         raise HTTPException(

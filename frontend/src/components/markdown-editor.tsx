@@ -92,20 +92,6 @@ export function MarkdownEditor({
       await onSaveRef.current(content);
     }
     
-    // Index file for search after successful save
-    if (noteId) {
-      try {
-        await searchEngine.indexLocal({
-          path: noteId,
-          content,
-          mtime: Date.now(),
-          hash: '', // Will be calculated by engine
-        });
-      } catch (error) {
-        console.error('Failed to index file:', error);
-      }
-    }
-    
     return {}; // Could return { etag } if backend supports it
   }, [noteId]); // Include noteId in deps
 
