@@ -29,7 +29,7 @@ function buildCursor(doc: any, query: string) {
   if (!query) return null;
   // Экранируем спецсимволы и собираем регистронезависимый regex
   const safe = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const rx = new RegExp(safe, 'gi');
+  const rx = new RegExp(safe, 'giu');
   return new SearchCursor(doc, rx, 0);
 }
 
