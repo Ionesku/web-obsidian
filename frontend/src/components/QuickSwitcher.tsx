@@ -32,9 +32,10 @@ interface QuickSwitcherProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (path: string) => void;
+  onCreate: (name: string) => void;
 }
 
-const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect }) => {
+const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect, onCreate }) => {
   const [query, setQuery] = useState('');
   const { files: allFiles } = useVaultStore(); // Get files from the store
   const [results, setResults] = useState<FileInfo[]>([]);
@@ -83,6 +84,9 @@ const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect
       e.preventDefault();
       if (results[activeIndex]) {
         handleSelect(results[activeIndex].path);
+      } else if (query.trim()) {
+        onCreate(query);
+        onClose();
       }
     } else if (e.key === 'Escape') {
       onClose();
@@ -126,7 +130,7 @@ const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect
                   index === activeIndex ? 'bg-gray-200 dark:bg-gray-700' : ''
                 }`}
               >
-                <p className="font-semibold">{file.name}</p>
+                <p className="font-semibold">{file.name.replace(/\.md$/, '')}</p>
                 <p className="text-sm text-gray-500">{file.path}</p>
               </div>
             ))}

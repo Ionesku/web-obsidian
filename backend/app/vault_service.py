@@ -130,25 +130,19 @@ Happy note-taking! 📝
             return []
         
         files = []
-        # Find all files and folders
-        for path in base.rglob('*'):
-            # Skip dot files/folders
+        # Only find markdown files, ignore directories
+        for path in base.rglob('*.md'):
+            # Skip dot files/folders, though rglob('*.md') shouldn't hit them
             if any(part.startswith('.') for part in path.parts):
                 continue
                 
             relative = path.relative_to(self.vault_path)
             stats = path.stat()
             
-            file_type = 'folder' if path.is_dir() else 'file'
-            
-            # Skip empty folders
-            if file_type == 'folder' and not any(path.iterdir()):
-                continue
-
             files.append({
                 'path': str(relative).replace('\\', '/'),
                 'name': path.name,
-                'type': file_type,
+                'type': 'file', # It's always a file now
                 'mtime': stats.st_mtime,
                 'size': stats.st_size
             })

@@ -418,6 +418,30 @@ export function VaultPage() {
     }
   };
 
+  const handleCreateFromSwitcher = async (name: string) => {
+    const path = name.endsWith('.md')
+      ? `notes/${name}`
+      : `notes/${name}.md`;
+
+    const initialContent = `# ${name.replace('.md', '')}\n\n`;
+
+    try {
+      // Check if file already exists to avoid errors
+      const fileExists = files.find(f => f.path === path);
+      if (fileExists) {
+        // If it exists, just open it
+        await handleSelectNote(path);
+        return;
+      }
+      
+      await createNote(path, initialContent);
+      await loadFiles(); // To refresh file list
+      await handleSelectNote(path); // To open the new note
+    } catch (error) {
+      console.error('Failed to create note from switcher:', error);
+    }
+  }
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -515,7 +539,7 @@ export function VaultPage() {
             style={{ paddingLeft: `${depth * 12 + 24}px` }}
           >
             <File className="w-4 h-4" />
-            <span className="truncate">{node.name}</span>
+            <span className="truncate">{node.name.replace(/\.md$/, '')}</span>
           </button>
         );
       }
@@ -876,6 +900,7 @@ export function VaultPage() {
               handleSelectNote(path);
               setShowQuickSwitcher(false); // Ensure it closes on selection
             }}
+            onCreate={handleCreateFromSwitcher}
           />
 
           {/* Tabs */}
