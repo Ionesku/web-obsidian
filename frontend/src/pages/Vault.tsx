@@ -9,7 +9,9 @@ import { MarkdownEditor } from '@/components/markdown-editor';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
 import { Search } from '@/components/Search';
 import { searchEngine } from '@/search';
+import { federatedSearch } from '@/search/parser/federation';
 import type { AutosaveStatus } from '@/lib/codemirror/types';
+import type { SearchResult } from '@/search/types';
 import {
   File,
   Folder,
@@ -50,7 +52,7 @@ export function VaultPage() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { files, currentNote, loadFiles, loadNote, saveNote, createNote, isLoading } = useVaultStore();
-  const { query, results, search, searchByTag, clearSearch, setQuery } = useSearchStore();
+  const { query, result, setQuery, reset } = useSearchStore();
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -76,6 +78,8 @@ export function VaultPage() {
   const [activeTab, setActiveTab] = useState<string | null>(() => {
     return localStorage.getItem('vault_active_tab');
   });
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
@@ -345,19 +349,32 @@ export function VaultPage() {
     setCharCount(chars);
   }, []);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     setSearchInput(value);
     if (value.trim()) {
-      // Check if it's a tag search
-      const tagMatch = value.match(/^tag:(#?)(.+)$/);
-      if (tagMatch) {
-        const tag = tagMatch[2]; // Extract tag without #
-        searchByTag(tag);
-      } else {
-      search(value);
+      setIsSearching(true);
+      try {
+        // Check if it's a tag search
+        const tagMatch = value.match(/^tag:(#?)(.+)$/);
+        if (tagMatch) {
+          const tag = tagMatch[2]; // Extract tag without #
+          const searchResult = await federatedSearch(`tag:${tag}`, { limit: 50 });
+          setSearchResults(searchResult);
+          setQuery(`tag:${tag}`);
+        } else {
+          const searchResult = await federatedSearch(value, { limit: 50 });
+          setSearchResults(searchResult);
+          setQuery(value);
+        }
+      } catch (error) {
+        console.error('Search failed:', error);
+        setSearchResults(null);
+      } finally {
+        setIsSearching(false);
       }
     } else {
-      clearSearch();
+      setSearchResults(null);
+      reset();
     }
   };
 
@@ -510,8 +527,8 @@ export function VaultPage() {
 
   return (
     <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
-      {/* Left icon panel */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4">
+      {/* Left icon panel - Dark sidebar */}
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 relative z-10">
         <button
           onClick={() => {
             setShowFilesSidebar(s => !s);
@@ -607,12 +624,12 @@ export function VaultPage() {
       </aside>
 
       {/* Main Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar (collapsible) */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar (collapsible) - Overlay on top of dark sidebar */}
         {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
           <aside 
             ref={sidebarRef}
-            className="bg-slate-50 border-r flex flex-col relative"
+            className="bg-slate-50 border-r flex flex-col relative shadow-lg z-20"
             style={{ width: `${sidebarWidth}px` }}
           >
             <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
@@ -775,7 +792,7 @@ export function VaultPage() {
         {sidebarCollapsed && (
           <button
             onClick={() => setSidebarCollapsed(false)}
-            className="w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center"
+            className="w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-20"
             title="Expand sidebar"
           >
             <PanelLeft className="w-4 h-4" />
@@ -871,27 +888,29 @@ export function VaultPage() {
                   onClick={() => {
                     setShowQuickSwitcher(false);
                     setSearchInput('');
-                    clearSearch();
+                    setSearchResults(null);
+                    reset();
                   }}
                   className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
                 >
                   <X className="w-4 h-4" />
                 </button>
-                {results.length > 0 && (
+                {searchResults && searchResults.hits.length > 0 && (
                   <div className="mt-2 max-h-96 overflow-y-auto">
-                    {results.map((result) => (
+                    {searchResults.hits.map((hit) => (
                       <button
-                        key={result.path}
+                        key={hit.path}
                         onClick={() => {
-                          handleSelectNote(result.path);
+                          handleSelectNote(hit.path);
                           setShowQuickSwitcher(false);
                           setSearchInput('');
-                          clearSearch();
+                          setSearchResults(null);
+                          reset();
                         }}
                         className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded"
                       >
-                        <div className="font-medium">{result.title}</div>
-                        <div className="text-xs text-gray-500">{result.path}</div>
+                        <div className="font-medium">{hit.title}</div>
+                        <div className="text-xs text-gray-500">{hit.path}</div>
                       </button>
                     ))}
                   </div>
