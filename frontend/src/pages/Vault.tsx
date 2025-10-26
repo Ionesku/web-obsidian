@@ -491,7 +491,7 @@ export function VaultPage() {
           <div key={node.path}>
             <button
               onClick={() => toggleFolder(node.path)}
-              className="w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 transition-colors flex items-center gap-1"
+              className="w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-accent transition-colors flex items-center gap-1"
               style={{ paddingLeft: `${depth * 12 + 12}px` }}
             >
               {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -508,8 +508,8 @@ export function VaultPage() {
           <button
             key={node.path}
             onClick={() => handleSelectNote(node.path)}
-            className={`w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 transition-colors flex items-center gap-1 ${
-              selectedPath === node.path ? 'bg-blue-50 text-blue-600' : ''
+            className={`w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-accent transition-colors flex items-center gap-1 ${
+              selectedPath === node.path ? 'bg-blue-50 text-blue-600 dark:bg-accent dark:text-foreground' : ''
             }`}
             style={{ paddingLeft: `${depth * 12 + 24}px` }}
           >
