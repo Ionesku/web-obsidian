@@ -12,7 +12,9 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Debug: List files to verify copy
-RUN ls -la src/lib/ || echo "lib directory not found!"
+RUN ls -la src/lib/codemirror/ || echo "codemirror directory not found!"
+RUN echo "Checking for search-highlight.ts:"
+RUN ls -la src/lib/codemirror/search-highlight.ts || echo "search-highlight.ts NOT FOUND!"
 
 # Build the app
 RUN npm run build
