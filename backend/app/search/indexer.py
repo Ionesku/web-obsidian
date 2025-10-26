@@ -62,17 +62,21 @@ class MarkdownIndexer:
             # Use AsyncWriter for better performance
             writer = AsyncWriter(self.ix)
             
+            doc_fields = {
+                "path": path,
+                "name": name,
+                "tags": tags_str,
+                "props": props_str,
+                "content": content,
+                "mtime": mtime or datetime.now(),
+                "size": len(content),
+            }
+
+            if settings.ENABLE_TRIGRAMS:
+                doc_fields["tri"] = content
+
             # Update or add document
-            writer.update_document(
-                path=path,
-                name=name,
-                tags=tags_str,
-                props=props_str,
-                content=content,
-                tri=content,  # Whoosh will automatically generate trigrams
-                mtime=mtime or datetime.now(),
-                size=len(content),
-            )
+            writer.update_document(**doc_fields)
             
             writer.commit()
             logger.info(f"Indexed: {path}")
@@ -129,16 +133,20 @@ class MarkdownIndexer:
                         if v is not None
                     )
                     
-                    writer.update_document(
-                        path=doc["path"],
-                        name=doc["name"],
-                        tags=tags_str,
-                        props=props_str,
-                        content=doc["content"],
-                        tri=doc["content"],
-                        mtime=doc.get("mtime", datetime.now()),
-                        size=len(doc["content"]),
-                    )
+                    doc_to_index = {
+                        "path": doc["path"],
+                        "name": doc["name"],
+                        "tags": tags_str,
+                        "props": props_str,
+                        "content": doc["content"],
+                        "mtime": doc.get("mtime", datetime.now()),
+                        "size": len(doc["content"]),
+                    }
+
+                    if settings.ENABLE_TRIGRAMS:
+                        doc_to_index["tri"] = doc["content"]
+
+                    writer.update_document(**doc_to_index)
                     count += 1
                     
                 except Exception as e:
