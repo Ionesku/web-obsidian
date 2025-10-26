@@ -22,7 +22,6 @@ import {
   foldGutter,
   indentOnInput,
   syntaxHighlighting,
-  defaultHighlightStyle,
   bracketMatching,
   foldKeymap,
 } from '@codemirror/language';
@@ -41,6 +40,7 @@ import { transclusionPlugin, transclusionTheme } from '@/lib/codemirror/transclu
 import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { searchHighlight, createSearchAPI, type SearchAPI } from '@/lib/codemirror/search-highlight';
 import { getLanguageSupport } from '@/lib/codemirror/code-languages';
+import { obsidianTheme, obsidianSyntaxHighlighting } from '@/lib/codemirror/theme';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -143,7 +143,7 @@ export function MarkdownEditor({
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
         indentOnInput(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        obsidianSyntaxHighlighting,
         bracketMatching(),
         closeBrackets(),
         rectangularSelection(),
@@ -215,41 +215,7 @@ export function MarkdownEditor({
         }),
 
         // Editor theme
-        EditorView.theme({
-          '&': {
-            height: '100%',
-            fontSize: '14px',
-            fontFamily: 'monospace',
-          },
-          '.cm-scroller': {
-            overflow: 'auto',
-            fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-          },
-          '.cm-content': {
-            padding: '12px 0',
-            caretColor: '#3b82f6',
-          },
-          '.cm-line': {
-            padding: '0 12px',
-            lineHeight: '1.6',
-          },
-          '.cm-activeLine': {
-            backgroundColor: 'rgba(59, 130, 246, 0.05)',
-          },
-          '.cm-activeLineGutter': {
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          },
-          '.cm-gutters': {
-            backgroundColor: '#f9fafb',
-            border: 'none',
-            color: '#9ca3af',
-          },
-          '.cm-foldPlaceholder': {
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid #3b82f6',
-            color: '#3b82f6',
-          },
-        }),
+        obsidianTheme,
 
         // Update callback
         EditorView.updateListener.of((update) => {
