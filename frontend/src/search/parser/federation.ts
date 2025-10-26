@@ -16,8 +16,6 @@ import type {
   Term,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 // Main federated search function
 export async function federatedSearch(
   query: string,
@@ -158,12 +156,20 @@ function termToServerTerm(term: Term): ServerTerm | null {
 
 // Call server search API
 async function callServerSearch(req: ServerSearchReq): Promise<ServerSearchResp> {
-  const response = await fetch(`${API_BASE}/api/search`, {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Use the api base URL configured in api.ts
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+  const response = await fetch(`${apiBase}/search`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getAuthToken()}`,
-    },
+    headers,
     body: JSON.stringify(req),
   });
   

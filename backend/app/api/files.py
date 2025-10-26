@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from typing import List
 from pathlib import Path
-import httpx
 
 from app.auth import get_current_user
 from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, RenameRequest
@@ -83,11 +82,17 @@ async def update_file(
     try:
         result = await vault.write_file(path, note.content)
 
-        # Index via API call
-        async with httpx.AsyncClient() as client:
-            url = f"http://localhost:8000/api/search/index"
-            headers = {"Authorization": f"Bearer {current_user.access_token}"}
-            await client.post(url, json={"path": path}, headers=headers)
+        # Index directly using the indexer
+        indexer = get_indexer()
+        metadata = extract_metadata_for_index(note.content)
+        
+        indexer.upsert_document(
+            path=path,
+            content=note.content,
+            name=path.split('/')[-1],
+            tags=metadata['tags'],
+            props=metadata['frontmatter']
+        )
 
         return result
     except ValueError as e:
@@ -128,14 +133,21 @@ async def rename_file(
     try:
         result = await vault.rename_file(request.old_path, request.new_path)
         
-        # Update Whoosh index via API
+        # Update Whoosh index directly
         indexer = get_indexer()
         indexer.delete_document(request.old_path)
         
-        async with httpx.AsyncClient() as client:
-            url = f"http://localhost:8000/api/search/index"
-            headers = {"Authorization": f"Bearer {current_user.access_token}"}
-            await client.post(url, json={"path": request.new_path}, headers=headers)
+        # Re-index with new path
+        file_info = await vault.get_file(request.new_path)
+        metadata = extract_metadata_for_index(file_info['content'])
+        
+        indexer.upsert_document(
+            path=request.new_path,
+            content=file_info['content'],
+            name=request.new_path.split('/')[-1],
+            tags=metadata['tags'],
+            props=metadata['frontmatter']
+        )
             
         return result
     except (FileNotFoundError, ValueError) as e:

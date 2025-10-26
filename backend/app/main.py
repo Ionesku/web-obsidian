@@ -59,7 +59,7 @@ app.add_middleware(LoggingMiddleware)
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(files.router, prefix="/files", tags=["Files"])
-app.include_router(search_router, prefix="/api/search", tags=["Search"])  # Whoosh-based search at /api/search
+app.include_router(search_router, prefix="/search", tags=["Search"])  # Whoosh-based search at /search
 app.include_router(canvas.router, prefix="/canvas", tags=["Canvas"])
 
 
