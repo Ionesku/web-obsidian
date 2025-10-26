@@ -125,11 +125,17 @@ export function VaultPage() {
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
         e.preventDefault();
         e.stopPropagation();
-        // Global search (Ctrl/Cmd + F)
-        setShowSearchSidebar(true);
-        setShowFilesSidebar(false);
-        setShowBookmarksSidebar(false);
-        if (!isSidebarOpen) setIsSidebarOpen(true);
+        if (e.shiftKey) {
+          // Global search (Ctrl/Cmd + Shift + F)
+          setShowSearchSidebar(true);
+          setShowFilesSidebar(false);
+          setShowBookmarksSidebar(false);
+          if (!isSidebarOpen) setIsSidebarOpen(true);
+        } else {
+          // Local search (Ctrl/Cmd + F)
+          setShowLocalSearch(true);
+          // Focus will be handled by the useEffect below
+        }
       }
       // Quick switcher (Ctrl/Cmd + K or Ctrl/Cmd + P)
       if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyK' || e.code === 'KeyP')) {
@@ -425,8 +431,8 @@ export function VaultPage() {
     if (!newNoteName.trim()) return;
     
     const path = newNoteName.endsWith('.md') 
-      ? `notes/${newNoteName}` 
-      : `notes/${newNoteName}.md`;
+      ? `${newNoteName}` 
+      : `${newNoteName}.md`;
     
     const initialContent = `# ${newNoteName.replace('.md', '')}\n\n`;
     
@@ -445,14 +451,14 @@ export function VaultPage() {
     if (!newFolderName.trim()) return;
     
     // Create a .gitkeep file in the folder
-    const path = `notes/${newFolderName}/.gitkeep`;
+    const path = `${newFolderName}/.gitkeep`;
     
     try {
       await createNote(path, '');
       setShowNewFolderDialog(false);
       setNewFolderName('');
       await loadFiles();
-      setExpandedFolders((prev) => new Set(prev).add(`notes/${newFolderName}`));
+      setExpandedFolders((prev) => new Set(prev).add(newFolderName));
     } catch (error) {
       console.error('Failed to create folder:', error);
     }
