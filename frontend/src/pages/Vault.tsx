@@ -85,7 +85,8 @@ export function VaultPage() {
   const [charCount, setCharCount] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
   const [vimMode, setVimMode] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // THIS IS THE ONLY STATE WE NEED FOR THE SIDEBAR VISIBILITY
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>({
@@ -527,24 +528,125 @@ export function VaultPage() {
 
 
   return (
-    <div className={`h-screen flex relative ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
-      {/* Sidebar (collapsible) - Overlay on top of dark sidebar */}
-      {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
+    <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
+      {/* Dark, permanent vertical icon bar */}
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 z-10">
+        <button
+          onClick={() => setIsSidebarOpen(o => !o)}
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelRight className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={() => {
+            setShowFilesSidebar(true);
+            setShowSearchSidebar(false);
+            if (!isSidebarOpen) setIsSidebarOpen(true);
+          }}
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+            showFilesSidebar && isSidebarOpen ? 'bg-slate-700 text-white' : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+          title="Files"
+        >
+          <FileText className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => {
+            setShowSearchSidebar(true);
+            setShowFilesSidebar(false);
+            if (!isSidebarOpen) setIsSidebarOpen(true);
+          }}
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+            showSearchSidebar && isSidebarOpen ? 'bg-slate-700 text-white' : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+          title="Search"
+        >
+          <SearchIcon className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleDailyNote}
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          title="Daily Notes"
+        >
+          <Calendar className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          title="Quick Switcher"
+        >
+          <Command className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => navigate('/canvas')}
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          title="Canvas"
+        >
+          <Grid3x3 className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => setVimMode(!vimMode)}
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+            vimMode 
+              ? 'bg-green-600 text-white hover:bg-green-700' 
+              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+          title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
+        >
+          <span className="text-lg font-bold font-mono">V</span>
+        </button>
+        
+        {/* Spacer */}
+        <div className="flex-1" />
+        
+        {/* User menu at bottom */}
+          <div className="relative">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
+            title={user?.username}
+          >
+            {user?.username.charAt(0).toUpperCase()}
+          </button>
+          
+          {showUserMenu && (
+            <div className="absolute left-12 bottom-0 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
+              <div className="px-4 py-2 border-b">
+                <div className="text-sm font-semibold">{user?.username}</div>
+                <div className="text-xs text-gray-500">{user?.email}</div>
+              </div>
+              <button
+                onClick={toggleDarkMode}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
+              >
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {darkMode ? 'Light Mode' : 'Dark Mode'}
+              </button>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setShowUserMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2 text-red-600"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Collapsible File/Search Sidebar */}
+      {isSidebarOpen && (
         <aside 
           ref={sidebarRef}
-          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-20 transition-all duration-200"
+          className="bg-slate-50 border-r flex flex-col relative"
           style={{ width: `${sidebarWidth}px` }}
         >
           {/* Top horizontal control panel */}
           <div className="bg-white border-b border-slate-200 flex items-center gap-1 px-2 py-2">
-            <button
-              onClick={() => setSidebarCollapsed(true)}
-              className="p-2 rounded hover:bg-slate-100 text-slate-700 transition-colors"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-            <div className="flex-1" />
             <button
               onClick={() => {
                 setShowFilesSidebar(true);
@@ -578,12 +680,12 @@ export function VaultPage() {
             </button>
           </div>
           
-          {/* Main content area */}
+          {/* Main content area of sidebar */}
           <div className="flex-1 flex flex-col overflow-hidden">
           {showSearchSidebar ? (
               <Search 
                 key={query}
-                onResultClick={handleSelectNote} 
+                onResultClick={(path) => handleSelectNote(path, query)}
                 initialQuery={query}
               />
           ) : (
@@ -702,117 +804,8 @@ export function VaultPage() {
         </aside>
       )}
 
-      {/* Expand button - collapsed sidebar */}
-      {sidebarCollapsed && (
-        <button
-          onClick={() => setSidebarCollapsed(false)}
-          className="fixed left-0 top-0 bottom-0 w-8 bg-slate-50 border-r hover:bg-slate-100 flex items-center justify-center shadow-lg z-20 transition-all duration-200"
-          title="Expand sidebar"
-        >
-          <PanelRight className="w-4 h-4 text-slate-600" />
-        </button>
-      )}
-
-      {/* Left icon panel - Dark sidebar */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 relative z-10">
-        <button
-          onClick={() => {
-            setShowFilesSidebar(s => !s);
-            if (showSearchSidebar) setShowSearchSidebar(false);
-          }}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Files"
-        >
-          <FileText className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => {
-            setShowSearchSidebar(s => !s);
-            if (showFilesSidebar) setShowFilesSidebar(false);
-          }}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Search"
-        >
-          <SearchIcon className="w-5 h-5" />
-        </button>
-        <button
-          onClick={handleDailyNote}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Daily Notes"
-        >
-          <Calendar className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Quick Switcher"
-        >
-          <Command className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => navigate('/canvas')}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Canvas"
-        >
-          <Grid3x3 className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => setVimMode(!vimMode)}
-          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-            vimMode 
-              ? 'bg-green-600 text-white hover:bg-green-700' 
-              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-          title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
-        >
-          <span className="text-lg font-bold font-mono">V</span>
-        </button>
-        
-        {/* Spacer */}
-        <div className="flex-1" />
-        
-        {/* User menu at bottom */}
-          <div className="relative">
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
-            title={user?.username}
-          >
-            {user?.username.charAt(0).toUpperCase()}
-          </button>
-          
-          {showUserMenu && (
-            <div className="absolute left-12 bottom-0 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
-              <div className="px-4 py-2 border-b">
-                <div className="text-sm font-semibold">{user?.username}</div>
-                <div className="text-xs text-gray-500">{user?.email}</div>
-              </div>
-              <button
-                onClick={toggleDarkMode}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
-              >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                {darkMode ? 'Light Mode' : 'Dark Mode'}
-              </button>
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setShowUserMenu(false);
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2 text-red-600"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Main Area */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Main content */}
-        <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-200" style={{ marginLeft: !sidebarCollapsed && (showFilesSidebar || showSearchSidebar) ? `${sidebarWidth}px` : '32px' }}>
+      {/* Main Content Area (Editor, etc.) */}
+      <main className="flex-1 flex flex-col overflow-hidden relative">
           {/* Local search overlay (Ctrl+F) */}
           {showLocalSearch && (
             <div className="absolute top-4 right-4 z-50 bg-white border rounded-lg shadow-xl p-4 min-w-[400px]">
@@ -1022,7 +1015,6 @@ export function VaultPage() {
             </div>
           )}
         </main>
-      </div>
     </div>
   );
 }
