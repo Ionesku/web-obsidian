@@ -99,6 +99,14 @@ export function VaultPage() {
         e.stopPropagation();
         setShowLocalSearch(true);
       }
+
+      // Ctrl+Shift+F for global search
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowSearchSidebar(true);
+        setShowFilesSidebar(false);
+      }
       
       // Escape to close search overlays
       if (e.key === 'Escape') {
@@ -355,7 +363,6 @@ export function VaultPage() {
     // Count words and characters
     const words = content.trim().split(/\s+/).filter(Boolean).length;
     const chars = content.length;
-    console.log('Content changed:', { words, chars });
     setWordCount(words);
     setCharCount(chars);
   }, []);
@@ -485,109 +492,49 @@ export function VaultPage() {
 
   return (
     <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
-      {/* Left icon panel - vertical */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-2 gap-1">
-        {/* Top actions in a group */}
-        <div className="flex flex-col items-center gap-1 pb-2 border-b border-slate-700 w-full">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {sidebarCollapsed ? <PanelRight className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-          </button>
-          
-          <button
-            onClick={() => {}}
-            className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-            title="Bookmarks"
-          >
-            <BookMarked className="w-5 h-5" />
-          </button>
-          
-          <button
-            onClick={() => {
-              if (showSearchSidebar) {
-                setShowSearchSidebar(false);
-                setShowFilesSidebar(true);
-              } else {
-                setShowSearchSidebar(true);
-                setShowFilesSidebar(false);
-              }
-            }}
-            className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
-              showSearchSidebar
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-            }`}
-            title="Search (Find)"
-          >
-            <SearchIcon className="w-5 h-5" />
-          </button>
-          
-          <button
-            onClick={() => {
-              if (showFilesSidebar) {
-                setShowFilesSidebar(false);
-                setShowSearchSidebar(true);
-              } else {
-                setShowFilesSidebar(true);
-                setShowSearchSidebar(false);
-              }
-            }}
-            className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
-              showFilesSidebar
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-            }`}
-            title="Files"
-          >
-            <FileText className="w-5 h-5" />
-          </button>
-        </div>
-        
-        {/* Other actions */}
+      {/* Left icon panel */}
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4">
         <button
           onClick={handleDailyNote}
-          className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Daily Notes"
         >
           <Calendar className="w-5 h-5" />
         </button>
         <button
           onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
-          className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Quick Switcher"
         >
           <Command className="w-5 h-5" />
         </button>
         <button
           onClick={() => navigate('/canvas')}
-          className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Canvas"
         >
           <Grid3x3 className="w-5 h-5" />
         </button>
         <button
           onClick={() => setVimMode(!vimMode)}
-          className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
             vimMode 
               ? 'bg-green-600 text-white hover:bg-green-700' 
               : 'hover:bg-slate-700 text-slate-300 hover:text-white'
           }`}
           title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
         >
-          <span className="text-base font-bold font-mono">V</span>
+          <span className="text-lg font-bold font-mono">V</span>
         </button>
         
         {/* Spacer */}
         <div className="flex-1" />
         
         {/* User menu at bottom */}
-        <div className="relative">
+          <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
+            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
             title={user?.username}
           >
             {user?.username.charAt(0).toUpperCase()}
@@ -629,6 +576,44 @@ export function VaultPage() {
             className="bg-white border-r flex flex-col relative"
             style={{ width: `${sidebarWidth}px` }}
           >
+             {/* Sidebar Header */}
+            <div className="p-2 border-b flex items-center gap-1 bg-slate-50">
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-2 rounded hover:bg-slate-200"
+                title="Collapse sidebar"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setShowFilesSidebar(true);
+                  setShowSearchSidebar(false);
+                }}
+                className={`p-2 rounded ${showFilesSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'}`}
+                title="Files"
+              >
+                <FileText className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setShowSearchSidebar(true);
+                  setShowFilesSidebar(false);
+                }}
+                className={`p-2 rounded ${showSearchSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'}`}
+                title="Search"
+              >
+                <SearchIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {}}
+                className="p-2 rounded hover:bg-slate-200"
+                title="Bookmarks"
+              >
+                <BookMarked className="w-4 h-4" />
+              </button>
+            </div>
+
             {showSearchSidebar ? (
               /* Search Sidebar */
               <Search 
@@ -793,12 +778,11 @@ export function VaultPage() {
                 onChange={(e) => handleLocalSearch(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    // TODO: Navigate to next match
-                    console.log('Search for:', localSearchInput);
+                    // TODO: Implement actual search in CodeMirror
+                    console.log('Searching for:', localSearchInput);
                   }
                 }}
                 className="w-full"
-                autoFocus
               />
               <div className="text-xs text-gray-500 mt-2">
                 Press Enter to search, Esc to close
