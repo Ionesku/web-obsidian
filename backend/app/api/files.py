@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from typing import List
 from pathlib import Path
+from pydantic import BaseModel
 
 from app.auth import get_current_user
 from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, RenameRequest
@@ -162,6 +163,40 @@ async def rename_file(
             detail=str(e)
         )
 
+
+class CopyRequest(BaseModel):
+    source_path: str
+    destination_path: str
+
+@router.post("/copy")
+async def copy_file(
+    request: CopyRequest,
+    vault: VaultService = Depends(get_vault_service),
+    current_user: User = Depends(get_current_user)
+):
+    """Copy a file"""
+    try:
+        result = await vault.copy_file(request.source_path, request.destination_path)
+        
+        # Re-index with new path
+        file_info = await vault.read_file(request.destination_path)
+        metadata = extract_metadata_for_index(file_info['content'], request.destination_path)
+        
+        indexer = get_indexer()
+        indexer.upsert_document(
+            path=request.destination_path,
+            content=file_info['content'],
+            name=request.destination_path.split('/')[-1],
+            tags=metadata['tags'],
+            props=metadata['props']
+        )
+            
+        return result
+    except (FileNotFoundError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 @router.get("/{path:path}/backlinks", response_model=List[BacklinkInfo])
 async def get_backlinks(

@@ -122,6 +122,27 @@ Happy note-taking! 📝
         
         return {'old_path': old_path, 'new_path': new_path, 'status': 'renamed'}
     
+    async def copy_file(self, source_path: str, destination_path: str) -> Dict:
+        """Copy a file"""
+        source_full_path = self._validate_path(source_path)
+        destination_full_path = self._validate_path(destination_path)
+        
+        if not source_full_path.exists():
+            raise FileNotFoundError(f"File {source_path} not found")
+        
+        if destination_full_path.exists():
+            raise ValueError(f"File {destination_path} already exists")
+        
+        # Create target directory if needed
+        destination_full_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        async with aiofiles.open(source_full_path, 'rb') as f_source:
+            content = await f_source.read()
+            async with aiofiles.open(destination_full_path, 'wb') as f_dest:
+                await f_dest.write(content)
+        
+        return {'source_path': source_path, 'destination_path': destination_path, 'status': 'copied'}
+    
     async def list_files(self, folder: str = '') -> List[Dict]:
         """List all markdown files in vault"""
         base = self.vault_path / folder if folder else self.vault_path
@@ -255,6 +276,10 @@ Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}
         except HTTPException as e:
             # Convert HTTPException from safe_join to ValueError for the service layer
             raise ValueError(e.detail)
+
+        # Allow .gitkeep for folder creation
+        if full_path.name == '.gitkeep':
+            return full_path
 
         # Check file extension
         allowed_extensions = ('.md', '.canvas', '.json')

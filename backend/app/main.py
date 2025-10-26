@@ -9,7 +9,7 @@ from filelock import FileLock, Timeout
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, files, canvas
+from app.api import auth, files, canvas, bookmarks
 from app.search import search_router
 from app.middleware import LoggingMiddleware, ErrorHandlingMiddleware, SecurityHeadersMiddleware
 from app.logging_config import setup_logging
@@ -200,6 +200,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(files.router, prefix="/files", tags=["Files"])
 app.include_router(search_router, prefix="/search", tags=["Search"])  # Whoosh-based search at /search
 app.include_router(canvas.router, prefix="/canvas", tags=["Canvas"])
+app.include_router(bookmarks.router, prefix="/bookmarks", tags=["Bookmarks"])
 
 
 @app.get("/")

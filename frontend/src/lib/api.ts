@@ -157,6 +157,38 @@ class ApiClient {
     });
   }
 
+  async moveFile(oldPath: string, newPath: string) {
+    return this.request('/files/move', {
+      method: 'POST',
+      body: JSON.stringify({ old_path: oldPath, new_path: newPath }),
+    });
+  }
+
+  async copyFile(sourcePath: string, destinationPath: string) {
+    return this.request('/files/copy', {
+      method: 'POST',
+      body: JSON.stringify({ source_path: sourcePath, destination_path: destinationPath }),
+    });
+  }
+
+  // Bookmarks
+  async createBookmark(path: string, title: string, group?: string) {
+    return this.request('/bookmarks/', {
+      method: 'POST',
+      body: JSON.stringify({ path, title, group }),
+    });
+  }
+
+  async getBookmarks() {
+    return this.request('/bookmarks/');
+  }
+
+  async deleteBookmark(bookmarkId: number) {
+    return this.request(`/bookmarks/${bookmarkId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getBacklinks(path: string) {
     return this.request(`/files/${path}/backlinks`);
   }
