@@ -532,24 +532,26 @@ export function VaultPage() {
       {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
         <aside 
           ref={sidebarRef}
-          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-20 transition-all duration-200"
+          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex shadow-lg z-20 transition-all duration-200"
           style={{ width: `${sidebarWidth}px` }}
         >
-          <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
+          {/* Left side control panel */}
+          <div className="w-12 bg-slate-100 flex flex-col items-center py-4 gap-4 border-r">
             <button
               onClick={() => setSidebarCollapsed(true)}
-              className="p-2 rounded hover:bg-slate-200 text-slate-600"
+              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 text-slate-600 transition-colors"
               title="Collapse sidebar"
             >
               <PanelLeftClose className="w-4 h-4" />
             </button>
-            <div className="flex-1" />
             <button
               onClick={() => {
                 setShowFilesSidebar(true);
                 setShowSearchSidebar(false);
               }}
-              className={`p-2 rounded ${showFilesSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
+              className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                showFilesSidebar ? 'bg-slate-200 text-slate-800' : 'hover:bg-slate-200 text-slate-600'
+              }`}
               title="Files"
             >
               <FileText className="w-4 h-4" />
@@ -559,19 +561,24 @@ export function VaultPage() {
                 setShowSearchSidebar(true);
                 setShowFilesSidebar(false);
               }}
-              className={`p-2 rounded ${showSearchSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
+              className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                showSearchSidebar ? 'bg-slate-200 text-slate-800' : 'hover:bg-slate-200 text-slate-600'
+              }`}
               title="Search"
             >
               <SearchIcon className="w-4 h-4" />
             </button>
             <button
               onClick={() => {}}
-              className="p-2 rounded hover:bg-slate-200 text-slate-600"
+              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 text-slate-600 transition-colors"
               title="Bookmarks"
             >
               <BookMarked className="w-4 h-4" />
             </button>
           </div>
+          
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col overflow-hidden">
           {showSearchSidebar ? (
               <Search 
                 key={query}
@@ -684,6 +691,9 @@ export function VaultPage() {
                 </div>
               </>
           )}
+          </div>
+          
+          {/* Resize handle */}
           <div
             className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors"
             onMouseDown={() => setIsResizing(true)}
