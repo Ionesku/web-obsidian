@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { db } from './idb';
-import { parseMarkdown, hashContent } from './parser/md';
+import { parseMarkdownOptimized, hashContent } from './parser/md-optimized';
 import type { WorkerMessage, WorkerResponse, IndexStatus } from './types';
 
 // Worker state
@@ -17,6 +17,7 @@ let status: IndexStatus = {
 // Message queue for batching
 const indexQueue: Array<{ path: string; content: string; mtime: number; hash: string }> = [];
 let processingBatch = false;
+const MAX_QUEUE_SIZE = 1000; // Prevent memory leak
 
 // ============================================================================
 // MESSAGE HANDLERS
@@ -54,6 +55,12 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 // ============================================================================
 
 async function handleIndexFile(payload: { path: string; content: string; mtime: number; hash: string }) {
+  // Check queue size to prevent memory leak
+  if (indexQueue.length >= MAX_QUEUE_SIZE) {
+    console.warn(`Queue is full (${MAX_QUEUE_SIZE} items), dropping oldest item`);
+    indexQueue.shift(); // Remove oldest item
+  }
+  
   // Add to queue
   indexQueue.push(payload);
   status.queueSize = indexQueue.length;
@@ -113,8 +120,8 @@ async function indexFile(item: { path: string; content: string; mtime: number; h
     return;
   }
   
-  // Parse markdown
-  const meta = parseMarkdown(item.path, item.content);
+  // Parse markdown (optimized single-pass parser)
+  const meta = parseMarkdownOptimized(item.path, item.content);
   
   // Get file name from path
   const name = item.path.split('/').pop() || item.path;

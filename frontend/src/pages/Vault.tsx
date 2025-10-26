@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
 import { Search } from '@/components/Search';
+import { searchEngine } from '@/search';
 import type { AutosaveStatus } from '@/lib/codemirror/types';
 import {
   File,
@@ -57,6 +58,7 @@ export function VaultPage() {
   const [showLocalSearch, setShowLocalSearch] = useState(false); // For Ctrl+F overlay
   const [showSearchSidebar, setShowSearchSidebar] = useState(false); // For dedicated search sidebar
   const [showFilesSidebar, setShowFilesSidebar] = useState(true); // For files sidebar
+  const [syncQueueSize, setSyncQueueSize] = useState(0); // Sync queue status
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showNewNoteDialog, setShowNewNoteDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
@@ -124,6 +126,22 @@ export function VaultPage() {
     }
     loadFiles();
   }, [isAuthenticated, navigate, loadFiles]);
+
+  // Monitor sync queue status
+  useEffect(() => {
+    const updateSyncStatus = () => {
+      const size = searchEngine.getSyncQueueSize();
+      setSyncQueueSize(size);
+    };
+    
+    // Update immediately
+    updateSyncStatus();
+    
+    // Update every second
+    const interval = setInterval(updateSyncStatus, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Auto-load active tab after page refresh
   useEffect(() => {
@@ -873,7 +891,8 @@ export function VaultPage() {
                   <SaveStatusIndicator 
                     status={autosaveStatus.status} 
                     lastSaved={autosaveStatus.lastSaved} 
-                    error={autosaveStatus.error} 
+                    error={autosaveStatus.error}
+                    syncQueueSize={syncQueueSize}
                   />
                   <span className="text-gray-400">•</span>
                   <span>{wordCount} words</span>

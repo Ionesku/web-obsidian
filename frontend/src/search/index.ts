@@ -5,6 +5,10 @@
 // Main engine
 export { searchEngine, initSearchEngine } from './engine';
 
+// Sync queue for offline support
+export { syncQueue } from './sync-queue';
+export type { SyncQueueItem } from './sync-queue';
+
 // Types
 export type {
   SearchResult,

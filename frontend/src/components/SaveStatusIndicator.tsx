@@ -1,13 +1,14 @@
 import { SaveStatus } from '@/hooks/useAutosave';
-import { Check, Cloud, CloudOff, AlertCircle, Loader2, GitBranch } from 'lucide-react';
+import { Check, Cloud, CloudOff, AlertCircle, Loader2, GitBranch, RefreshCw } from 'lucide-react';
 
 interface SaveStatusIndicatorProps {
   status: SaveStatus;
   lastSaved: Date | null;
   error: string | null;
+  syncQueueSize?: number;
 }
 
-export function SaveStatusIndicator({ status, lastSaved, error }: SaveStatusIndicatorProps) {
+export function SaveStatusIndicator({ status, lastSaved, error, syncQueueSize = 0 }: SaveStatusIndicatorProps) {
   const getStatusDisplay = () => {
     switch (status) {
       case 'saving':
@@ -60,9 +61,23 @@ export function SaveStatusIndicator({ status, lastSaved, error }: SaveStatusIndi
     }
   };
 
+  const getSyncDisplay = () => {
+    if (syncQueueSize === 0) return null;
+    
+    return (
+      <span className="flex items-center gap-1 text-amber-600 ml-2 px-2 py-0.5 bg-amber-50 rounded" 
+            title={`${syncQueueSize} item${syncQueueSize > 1 ? 's' : ''} pending sync`}>
+        <RefreshCw className="w-3 h-3 animate-spin" />
+        <span className="font-medium">{syncQueueSize}</span>
+        {syncQueueSize === 1 ? 'syncing' : 'queued'}
+      </span>
+    );
+  };
+
   return (
     <div className="flex items-center gap-2 text-xs">
       {getStatusDisplay()}
+      {getSyncDisplay()}
     </div>
   );
 }

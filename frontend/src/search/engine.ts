@@ -4,7 +4,8 @@
 
 import { db } from './idb';
 import { federatedSearch } from './parser/federation';
-import { hashContent } from './parser/md';
+import { hashContent } from './parser/md-optimized';
+import { syncQueue } from './sync-queue';
 import type {
   SearchEngine,
   IndexFilePayload,
@@ -90,23 +91,58 @@ class ObsidianSearchEngine implements SearchEngine {
     }
   }
 
-  // Index a file
+  // Index a file (always indexes locally, queues for server if online)
   async indexLocal(file: IndexFilePayload): Promise<void> {
     // Calculate hash if not provided
     const hash = file.hash || hashContent(file.content);
 
+    // Always index locally first (instant feedback)
     this.postToWorker({
       type: 'INDEX_FILE',
       payload: { ...file, hash },
     });
+
+    // Queue for server sync
+    if (navigator.onLine) {
+      // Try to sync immediately
+      await syncQueue.enqueue({
+        type: 'index',
+        path: file.path,
+        content: file.content,
+        mtime: file.mtime,
+      });
+      // Trigger queue processing in background
+      setTimeout(() => syncQueue.processQueue(), 0);
+    } else {
+      // Offline - just queue for later
+      await syncQueue.enqueue({
+        type: 'index',
+        path: file.path,
+        content: file.content,
+        mtime: file.mtime,
+      });
+      console.log(`Queued for sync (offline): ${file.path}`);
+    }
   }
 
   // Delete a file from index
   async deleteLocal(path: string): Promise<void> {
+    // Delete locally first
     this.postToWorker({
       type: 'DELETE_FILE',
       payload: { path },
     });
+
+    // Queue for server sync
+    await syncQueue.enqueue({
+      type: 'delete',
+      path,
+    });
+
+    // Trigger queue processing if online
+    if (navigator.onLine) {
+      setTimeout(() => syncQueue.processQueue(), 0);
+    }
   }
 
   // Rebuild backlink graph
@@ -158,6 +194,21 @@ class ObsidianSearchEngine implements SearchEngine {
   // Get index statistics
   async getStats() {
     return await db.getStats();
+  }
+
+  // Get sync queue status
+  getSyncQueueSize(): number {
+    return syncQueue.getQueueSize();
+  }
+
+  // Force sync queue processing
+  async forceSyncNow(): Promise<void> {
+    await syncQueue.processQueue();
+  }
+
+  // Clear sync queue (for testing)
+  clearSyncQueue(): void {
+    syncQueue.clearQueue();
   }
 }
 
