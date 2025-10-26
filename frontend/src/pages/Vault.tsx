@@ -536,10 +536,10 @@ export function VaultPage() {
           style={{ width: `${sidebarWidth}px` }}
         >
           {/* Left side control panel */}
-          <div className="w-12 bg-slate-100 flex flex-col items-center py-4 gap-4 border-r">
+          <div className="w-12 bg-white flex flex-col items-center py-4 gap-4 border-r border-slate-200">
             <button
               onClick={() => setSidebarCollapsed(true)}
-              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 text-slate-600 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700 transition-colors"
               title="Collapse sidebar"
             >
               <PanelLeftClose className="w-4 h-4" />
@@ -550,7 +550,7 @@ export function VaultPage() {
                 setShowSearchSidebar(false);
               }}
               className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-                showFilesSidebar ? 'bg-slate-200 text-slate-800' : 'hover:bg-slate-200 text-slate-600'
+                showFilesSidebar ? 'bg-slate-200 text-slate-900' : 'hover:bg-slate-100 text-slate-700'
               }`}
               title="Files"
             >
@@ -562,7 +562,7 @@ export function VaultPage() {
                 setShowFilesSidebar(false);
               }}
               className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-                showSearchSidebar ? 'bg-slate-200 text-slate-800' : 'hover:bg-slate-200 text-slate-600'
+                showSearchSidebar ? 'bg-slate-200 text-slate-900' : 'hover:bg-slate-100 text-slate-700'
               }`}
               title="Search"
             >
@@ -570,7 +570,7 @@ export function VaultPage() {
             </button>
             <button
               onClick={() => {}}
-              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-200 text-slate-600 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700 transition-colors"
               title="Bookmarks"
             >
               <BookMarked className="w-4 h-4" />
