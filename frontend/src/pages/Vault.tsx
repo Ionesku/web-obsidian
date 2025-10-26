@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import { useVaultStore } from '@/stores/vault';
@@ -49,7 +49,7 @@ export function VaultPage() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { files, currentNote, loadFiles, loadNote, saveNote, createNote, isLoading } = useVaultStore();
-  const { results, search, searchByTag, clearSearch, setQuery, query: searchQuery } = useSearchStore();
+  const { query, results, search, searchByTag, clearSearch, setQuery } = useSearchStore();
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -66,12 +66,10 @@ export function VaultPage() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
   const [tabs, setTabs] = useState<Tab[]>(() => {
-    // Load tabs from localStorage on init
     const saved = localStorage.getItem('vault_tabs');
     return saved ? JSON.parse(saved) : [];
   });
   const [activeTab, setActiveTab] = useState<string | null>(() => {
-    // Load active tab from localStorage
     return localStorage.getItem('vault_active_tab');
   });
   const [wordCount, setWordCount] = useState(0);
@@ -79,7 +77,7 @@ export function VaultPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [vimMode, setVimMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(256); // 64rem = 256px
+  const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>({
     status: 'idle',
@@ -93,44 +91,29 @@ export function VaultPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+F for local search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         e.stopPropagation();
-        setShowLocalSearch(true);
-      }
-
-      // Ctrl+Shift+F for global search
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!showSearchSidebar) {
+        if (e.shiftKey) {
           setShowSearchSidebar(true);
           setShowFilesSidebar(false);
+        } else {
+          setShowLocalSearch(true);
         }
       }
-      
-      // Escape to close search overlays
       if (e.key === 'Escape') {
-        if (showLocalSearch) {
-          setShowLocalSearch(false);
-          setLocalSearchInput('');
-        }
-        if (showQuickSwitcher) {
-          setShowQuickSwitcher(false);
-        }
+        if (showLocalSearch) setShowLocalSearch(false);
+        if (showQuickSwitcher) setShowQuickSwitcher(false);
       }
     };
-
-    // Use capture phase to intercept before browser default
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [showLocalSearch, showQuickSwitcher, showSearchSidebar]);
+  }, [showLocalSearch, showQuickSwitcher]);
 
-  // Focus local search input when it opens
+  // Focus local search input
   useEffect(() => {
-    if (showLocalSearch && localSearchInputRef.current) {
-      localSearchInputRef.current.focus();
+    if (showLocalSearch) {
+      localSearchInputRef.current?.focus();
     }
   }, [showLocalSearch]);
 
@@ -245,19 +228,16 @@ export function VaultPage() {
   };
 
   // Memoize file tree generation
-  const fileTree = useMemo(() => buildFileTree(files), [files]);
+  const fileTree = buildFileTree(files);
 
-  const toggleFolder = (path: string) => {
-    setExpandedFolders((prev) => {
+  const toggleFolder = useCallback((path: string) => {
+    setExpandedFolders(prev => {
       const next = new Set(prev);
-      if (next.has(path)) {
-        next.delete(path);
-      } else {
-        next.add(path);
-      }
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
       return next;
     });
-  };
+  }, []);
 
   const toggleAllFolders = () => {
     if (allExpanded) {
@@ -279,60 +259,15 @@ export function VaultPage() {
     }
   };
 
-  const renderFileTree = useCallback((nodes: FileNode[], depth: number = 0): JSX.Element[] => {
-    return nodes.map((node) => {
-      if (node.type === 'folder') {
-        const isExpanded = expandedFolders.has(node.path);
-        return (
-          <div key={node.path}>
-            <button
-              onClick={() => toggleFolder(node.path)}
-              className="w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 transition-colors flex items-center gap-1"
-              style={{ paddingLeft: `${depth * 12 + 12}px` }}
-            >
-              {isExpanded ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              )}
-              <Folder className="w-4 h-4" />
-              <span className="font-medium">{node.name}</span>
-            </button>
-            {isExpanded && node.children && (
-              <div>{renderFileTree(node.children, depth + 1)}</div>
-            )}
-          </div>
-        );
-      } else {
-        return (
-          <button
-            key={node.path}
-            onClick={() => handleSelectNote(node.path)}
-            className={`w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 transition-colors flex items-center gap-1 ${
-              selectedPath === node.path ? 'bg-blue-50 text-blue-600' : ''
-            }`}
-            style={{ paddingLeft: `${depth * 12 + 24}px` }}
-          >
-            <File className="w-4 h-4" />
-            <span className="truncate">{node.name}</span>
-          </button>
-        );
-      }
-    });
-  }, [expandedFolders, handleSelectNote, selectedPath, toggleFolder]); // Dependencies for renderFileTree
-
-  const handleSelectNote = async (path: string) => {
+  const handleSelectNote = useCallback(async (path: string) => {
     setSelectedPath(path);
     setActiveTab(path);
     await loadNote(path);
-    clearSearch();
-
-    // Add to tabs if not already there
-    if (!tabs.find((tab) => tab.path === path)) {
+    if (!tabs.some(tab => tab.path === path)) {
       const fileName = path.split('/').pop() || path;
-      setTabs([...tabs, { path, title: fileName }]);
+      setTabs(t => [...t, { path, title: fileName }]);
     }
-  };
+  }, [loadNote, tabs]);
 
   const closeTab = (path: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -363,7 +298,6 @@ export function VaultPage() {
   }, [selectedPath, saveNote]);
 
   const handleContentChange = useCallback((content: string) => {
-    // Count words and characters
     const words = content.trim().split(/\s+/).filter(Boolean).length;
     const chars = content.length;
     setWordCount(words);
@@ -467,17 +401,12 @@ export function VaultPage() {
     }
   };
 
-  const handleTagClick = (tag: string) => {
-    console.log('Tag clicked:', tag);
-    // Remove # if present
-    const cleanTag = tag.replace(/^#/, '');
-    // Use the tag directly as search query
-    const searchQuery = `tag:${cleanTag}`;
-    console.log('Search query:', searchQuery);
-    setQuery(searchQuery);
-    setShowSearchSidebar(true); // Open search sidebar
-    setShowFilesSidebar(false); // Hide files sidebar
-  };
+  const handleTagClick = useCallback((tag: string) => {
+    const cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+    setQuery(`tag:${cleanTag}`);
+    setShowSearchSidebar(true);
+    setShowFilesSidebar(false);
+  }, [setQuery]);
 
   // Local search within current file (Ctrl+F)
   const handleLocalSearch = (value: string) => {
@@ -496,12 +425,47 @@ export function VaultPage() {
   // Initialize word/char count on note load
   useEffect(() => {
     if (currentNote) {
-      const words = currentNote.content.trim().split(/\s+/).filter(Boolean).length;
-      const chars = currentNote.content.length;
-      setWordCount(words);
-      setCharCount(chars);
+      handleContentChange(currentNote.content);
     }
-  }, [currentNote]);
+  }, [currentNote, handleContentChange]);
+
+  const renderFileTree = useCallback((nodes: FileNode[], depth: number = 0): JSX.Element[] => {
+    return nodes.map((node) => {
+      if (node.type === 'folder') {
+        const isExpanded = expandedFolders.has(node.path);
+        return (
+          <div key={node.path}>
+            <button
+              onClick={() => toggleFolder(node.path)}
+              className="w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 transition-colors flex items-center gap-1"
+              style={{ paddingLeft: `${depth * 12 + 12}px` }}
+            >
+              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              <Folder className="w-4 h-4" />
+              <span className="font-medium">{node.name}</span>
+            </button>
+            {isExpanded && node.children && (
+              <div>{renderFileTree(node.children, depth + 1)}</div>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <button
+            key={node.path}
+            onClick={() => handleSelectNote(node.path)}
+            className={`w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 transition-colors flex items-center gap-1 ${
+              selectedPath === node.path ? 'bg-blue-50 text-blue-600' : ''
+            }`}
+            style={{ paddingLeft: `${depth * 12 + 24}px` }}
+          >
+            <File className="w-4 h-4" />
+            <span className="truncate">{node.name}</span>
+          </button>
+        );
+      }
+    });
+  }, [expandedFolders, selectedPath, toggleFolder, handleSelectNote]);
 
 
   return (
@@ -650,9 +614,9 @@ export function VaultPage() {
             </div>
             {showSearchSidebar ? (
                 <Search 
-                  key={searchQuery}
+                  key={query}
                   onResultClick={handleSelectNote} 
-                  initialQuery={searchQuery}
+                  initialQuery={query}
                 />
             ) : (
                 <>
