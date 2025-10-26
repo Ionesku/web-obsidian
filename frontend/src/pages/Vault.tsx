@@ -526,9 +526,183 @@ export function VaultPage() {
 
 
   return (
-    <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`h-screen flex relative ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
+      {/* Sidebar (collapsible) - Overlay on top of everything */}
+      {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
+        <aside 
+          ref={sidebarRef}
+          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-30 transition-all duration-200"
+          style={{ width: `${sidebarWidth}px` }}
+        >
+          <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
+            <button
+              onClick={() => setSidebarCollapsed(true)}
+              className="p-2 rounded hover:bg-slate-200 text-slate-600"
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={() => {
+                setShowFilesSidebar(true);
+                setShowSearchSidebar(false);
+              }}
+              className={`p-2 rounded ${showFilesSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
+              title="Files"
+            >
+              <FileText className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setShowSearchSidebar(true);
+                setShowFilesSidebar(false);
+              }}
+              className={`p-2 rounded ${showSearchSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
+              title="Search"
+            >
+              <SearchIcon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {}}
+              className="p-2 rounded hover:bg-slate-200 text-slate-600"
+              title="Bookmarks"
+            >
+              <BookMarked className="w-4 h-4" />
+            </button>
+          </div>
+          {showSearchSidebar ? (
+              <Search 
+                key={query}
+                onResultClick={handleSelectNote} 
+                initialQuery={query}
+              />
+          ) : (
+              <>
+                {/* File controls (New Note, New Folder) */}
+                <div className="p-4 space-y-2 border-b">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowNewNoteDialog(true)}
+                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
+                      title="New note"
+                    >
+                      <FilePlus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowNewFolderDialog(true)}
+                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
+                      title="New folder"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={toggleAllFolders}
+                      className="px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors"
+                      title={allExpanded ? "Collapse all" : "Expand all"}
+                    >
+                      <ChevronsUpDown className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {showNewNoteDialog && (
+                    <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
+                      <Input
+                        placeholder="Note name"
+                        value={newNoteName}
+                        onChange={(e) => setNewNoteName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateNote();
+                          if (e.key === 'Escape') {
+                            setShowNewNoteDialog(false);
+                            setNewNoteName('');
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreateNote}>
+                          Create
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowNewNoteDialog(false);
+                            setNewNoteName('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {showNewFolderDialog && (
+                    <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
+                      <Input
+                        placeholder="Folder name"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateFolder();
+                          if (e.key === 'Escape') {
+                            setShowNewFolderDialog(false);
+                            setNewFolderName('');
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreateFolder}>
+                          Create
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowNewFolderDialog(false);
+                            setNewFolderName('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* File Tree */}
+                <div className="flex-1 overflow-y-auto px-2 py-2">
+                  {isLoading ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {renderFileTree(fileTree)}
+                    </div>
+                  )}
+                </div>
+              </>
+          )}
+          <div
+            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors"
+            onMouseDown={() => setIsResizing(true)}
+          />
+        </aside>
+      )}
+
+      {/* Expand button */}
+      {sidebarCollapsed && (
+        <button
+          onClick={() => setSidebarCollapsed(false)}
+          className="fixed left-0 top-0 bottom-0 w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-30"
+          title="Expand sidebar"
+        >
+          <PanelLeft className="w-4 h-4" />
+        </button>
+      )}
+
       {/* Left icon panel - Dark sidebar */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 relative z-0">
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 relative z-10">
         <button
           onClick={() => {
             setShowFilesSidebar(s => !s);
@@ -625,180 +799,6 @@ export function VaultPage() {
 
       {/* Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Sidebar (collapsible) - Overlay on top of dark sidebar */}
-        {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
-          <aside 
-            ref={sidebarRef}
-            className="absolute left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-20 transition-all duration-200"
-            style={{ width: `${sidebarWidth}px` }}
-          >
-            <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
-              <button
-                onClick={() => setSidebarCollapsed(true)}
-                className="p-2 rounded hover:bg-slate-200 text-slate-600"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
-              <div className="flex-1" />
-              <button
-                onClick={() => {
-                  setShowFilesSidebar(true);
-                  setShowSearchSidebar(false);
-                }}
-                className={`p-2 rounded ${showFilesSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
-                title="Files"
-              >
-                <FileText className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => {
-                  setShowSearchSidebar(true);
-                  setShowFilesSidebar(false);
-                }}
-                className={`p-2 rounded ${showSearchSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
-                title="Search"
-              >
-                <SearchIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => {}}
-                className="p-2 rounded hover:bg-slate-200 text-slate-600"
-                title="Bookmarks"
-              >
-                <BookMarked className="w-4 h-4" />
-              </button>
-            </div>
-            {showSearchSidebar ? (
-                <Search 
-                  key={query}
-                  onResultClick={handleSelectNote} 
-                  initialQuery={query}
-                />
-            ) : (
-                <>
-                  {/* File controls (New Note, New Folder) */}
-                  <div className="p-4 space-y-2 border-b">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowNewNoteDialog(true)}
-                        className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
-                        title="New note"
-                      >
-                        <FilePlus className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setShowNewFolderDialog(true)}
-                        className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
-                        title="New folder"
-                      >
-                        <FolderPlus className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={toggleAllFolders}
-                        className="px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors"
-                        title={allExpanded ? "Collapse all" : "Expand all"}
-                      >
-                        <ChevronsUpDown className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {showNewNoteDialog && (
-                      <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
-                        <Input
-                          placeholder="Note name"
-                          value={newNoteName}
-                          onChange={(e) => setNewNoteName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleCreateNote();
-                            if (e.key === 'Escape') {
-                              setShowNewNoteDialog(false);
-                              setNewNoteName('');
-                            }
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={handleCreateNote}>
-                            Create
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => {
-                              setShowNewNoteDialog(false);
-                              setNewNoteName('');
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {showNewFolderDialog && (
-                      <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
-                        <Input
-                          placeholder="Folder name"
-                          value={newFolderName}
-                          onChange={(e) => setNewFolderName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleCreateFolder();
-                            if (e.key === 'Escape') {
-                              setShowNewFolderDialog(false);
-                              setNewFolderName('');
-                            }
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={handleCreateFolder}>
-                            Create
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => {
-                              setShowNewFolderDialog(false);
-                              setNewFolderName('');
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {/* File Tree */}
-                  <div className="flex-1 overflow-y-auto px-2 py-2">
-                    {isLoading ? (
-                      <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
-                    ) : (
-                      <div className="space-y-0.5">
-                        {renderFileTree(fileTree)}
-                      </div>
-                    )}
-                  </div>
-                </>
-            )}
-            <div
-              className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors"
-              onMouseDown={() => setIsResizing(true)}
-            />
-          </aside>
-        )}
-        
-        {/* Expand button */}
-        {sidebarCollapsed && (
-          <button
-            onClick={() => setSidebarCollapsed(false)}
-            className="absolute left-0 top-0 bottom-0 w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-20"
-            title="Expand sidebar"
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
-        )}
-
         {/* Main content */}
         <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-200" style={{ marginLeft: !sidebarCollapsed && (showFilesSidebar || showSearchSidebar) ? `${sidebarWidth}px` : '0' }}>
           {/* Local search overlay (Ctrl+F) */}
