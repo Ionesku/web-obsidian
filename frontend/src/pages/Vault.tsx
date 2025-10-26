@@ -98,10 +98,6 @@ export function VaultPage() {
         e.preventDefault();
         e.stopPropagation();
         setShowLocalSearch(true);
-        // Focus input after state updates
-        setTimeout(() => {
-          localSearchInputRef.current?.focus();
-        }, 100);
       }
       
       // Escape to close search overlays
@@ -120,6 +116,13 @@ export function VaultPage() {
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [showLocalSearch, showQuickSwitcher]);
+
+  // Focus local search input when it opens
+  useEffect(() => {
+    if (showLocalSearch && localSearchInputRef.current) {
+      localSearchInputRef.current.focus();
+    }
+  }, [showLocalSearch]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -480,16 +483,16 @@ export function VaultPage() {
   const currentNoteModified = files.find(f => f.path === selectedPath)?.modified;
 
   return (
-    <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
-      {/* Left icon panel */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-2">
-        {/* Top menu bar icons */}
+    <div className={`h-screen flex flex-col ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
+      {/* Top toolbar - horizontal */}
+      <div className="h-12 bg-slate-800 flex items-center px-2 gap-1">
+        {/* Left side - main actions */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {sidebarCollapsed ? <PanelRight className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          {sidebarCollapsed ? <PanelRight className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>
         
         <button
@@ -497,7 +500,7 @@ export function VaultPage() {
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Bookmarks"
         >
-          <BookMarked className="w-5 h-5" />
+          <BookMarked className="w-4 h-4" />
         </button>
         
         <button
@@ -519,7 +522,7 @@ export function VaultPage() {
           }`}
           title="Search (Find)"
         >
-          <SearchIcon className="w-5 h-5" />
+          <SearchIcon className="w-4 h-4" />
         </button>
         
         <button
@@ -541,39 +544,32 @@ export function VaultPage() {
           }`}
           title="Files"
         >
-          <FileText className="w-5 h-5" />
+          <FileText className="w-4 h-4" />
         </button>
         
         {/* Divider */}
-        <div className="w-6 h-px bg-slate-600 my-1" />
+        <div className="h-6 w-px bg-slate-600 mx-1" />
         
         <button
           onClick={handleDailyNote}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Daily Notes"
         >
-          <Calendar className="w-5 h-5" />
+          <Calendar className="w-4 h-4" />
         </button>
         <button
           onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Quick Switcher"
         >
-          <Command className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => {}}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Templates"
-        >
-          <FileText className="w-5 h-5" />
+          <Command className="w-4 h-4" />
         </button>
         <button
           onClick={() => navigate('/canvas')}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Canvas"
         >
-          <Grid3x3 className="w-5 h-5" />
+          <Grid3x3 className="w-4 h-4" />
         </button>
         <button
           onClick={() => setVimMode(!vimMode)}
@@ -584,24 +580,24 @@ export function VaultPage() {
           }`}
           title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
         >
-          <span className="text-lg font-bold font-mono">V</span>
+          <span className="text-sm font-bold font-mono">V</span>
         </button>
         
         {/* Spacer */}
         <div className="flex-1" />
         
-        {/* User menu at bottom */}
+        {/* User menu at right */}
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
+            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors text-xs"
             title={user?.username}
           >
             {user?.username.charAt(0).toUpperCase()}
           </button>
           
           {showUserMenu && (
-            <div className="absolute left-12 bottom-0 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
+            <div className="absolute right-0 top-12 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
               <div className="px-4 py-2 border-b">
                 <div className="text-sm font-semibold">{user?.username}</div>
                 <div className="text-xs text-gray-500">{user?.email}</div>
@@ -626,7 +622,7 @@ export function VaultPage() {
             </div>
           )}
         </div>
-      </aside>
+      </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Files or Search */}
@@ -639,6 +635,7 @@ export function VaultPage() {
             {showSearchSidebar ? (
               /* Search Sidebar */
               <Search 
+                key={searchQuery} // Force re-render when query changes
                 onResultClick={handleSelectNote} 
                 initialQuery={searchQuery}
               />
@@ -797,10 +794,17 @@ export function VaultPage() {
                 placeholder="Search in current file..."
                 value={localSearchInput}
                 onChange={(e) => handleLocalSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    // TODO: Navigate to next match
+                    console.log('Search for:', localSearchInput);
+                  }
+                }}
                 className="w-full"
+                autoFocus
               />
               <div className="text-xs text-gray-500 mt-2">
-                Press Esc to close
+                Press Enter to search, Esc to close
               </div>
             </div>
           )}
