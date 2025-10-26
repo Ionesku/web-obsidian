@@ -68,11 +68,11 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
     }
   }, [history]);
 
-  // Perform initial search if query is provided
   useEffect(() => {
-    if (initialQuery && initialQuery.trim()) {
+    if (initialQuery) {
       performSearch(initialQuery);
     }
+    // performSearch is stable due to useCallback, but including it is good practice
   }, [initialQuery, performSearch]);
 
   // Handle query change with debounce

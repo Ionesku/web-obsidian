@@ -101,11 +101,13 @@ export function VaultPage() {
       }
 
       // Ctrl+Shift+F for global search
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         e.stopPropagation();
-        setShowSearchSidebar(true);
-        setShowFilesSidebar(false);
+        if (!showSearchSidebar) {
+          setShowSearchSidebar(true);
+          setShowFilesSidebar(false);
+        }
       }
       
       // Escape to close search overlays
@@ -123,7 +125,7 @@ export function VaultPage() {
     // Use capture phase to intercept before browser default
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [showLocalSearch, showQuickSwitcher]);
+  }, [showLocalSearch, showQuickSwitcher, showSearchSidebar]);
 
   // Focus local search input when it opens
   useEffect(() => {
@@ -276,7 +278,7 @@ export function VaultPage() {
     }
   };
 
-  const renderFileTree = (nodes: FileNode[], depth: number = 0): JSX.Element[] => {
+  const renderFileTree = useCallback((nodes: FileNode[], depth: number = 0): JSX.Element[] => {
     return nodes.map((node) => {
       if (node.type === 'folder') {
         const isExpanded = expandedFolders.has(node.path);
@@ -316,7 +318,7 @@ export function VaultPage() {
         );
       }
     });
-  };
+  }, [expandedFolders, selectedPath]); // Dependencies for renderFileTree
 
   const handleSelectNote = async (path: string) => {
     setSelectedPath(path);
@@ -570,27 +572,28 @@ export function VaultPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Files or Search */}
-        {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
+        {!sidebarCollapsed && (
           <aside 
             ref={sidebarRef}
-            className="bg-white border-r flex flex-col relative"
+            className="bg-slate-50 border-r flex flex-col relative"
             style={{ width: `${sidebarWidth}px` }}
           >
              {/* Sidebar Header */}
-            <div className="p-2 border-b flex items-center gap-1 bg-slate-50">
+            <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="p-2 rounded hover:bg-slate-200"
+                className="p-2 rounded hover:bg-slate-200 text-slate-600"
                 title="Collapse sidebar"
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
+              <div className="flex-1" />
               <button
                 onClick={() => {
                   setShowFilesSidebar(true);
                   setShowSearchSidebar(false);
                 }}
-                className={`p-2 rounded ${showFilesSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'}`}
+                className={`p-2 rounded ${showFilesSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
                 title="Files"
               >
                 <FileText className="w-4 h-4" />
@@ -600,14 +603,14 @@ export function VaultPage() {
                   setShowSearchSidebar(true);
                   setShowFilesSidebar(false);
                 }}
-                className={`p-2 rounded ${showSearchSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'}`}
+                className={`p-2 rounded ${showSearchSidebar ? 'bg-slate-200' : 'hover:bg-slate-200'} text-slate-600`}
                 title="Search"
               >
                 <SearchIcon className="w-4 h-4" />
               </button>
               <button
                 onClick={() => {}}
-                className="p-2 rounded hover:bg-slate-200"
+                className="p-2 rounded hover:bg-slate-200 text-slate-600"
                 title="Bookmarks"
               >
                 <BookMarked className="w-4 h-4" />
@@ -628,21 +631,21 @@ export function VaultPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowNewNoteDialog(true)}
-                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
                       title="New note"
                     >
                       <FilePlus className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setShowNewFolderDialog(true)}
-                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
                       title="New folder"
                     >
                       <FolderPlus className="w-4 h-4" />
                     </button>
                     <button
                       onClick={toggleAllFolders}
-                      className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
+                      className="px-3 py-2 text-sm border rounded hover:bg-slate-100 transition-colors"
                       title={allExpanded ? "Collapse all" : "Expand all"}
                     >
                       <ChevronsUpDown className="w-4 h-4" />
