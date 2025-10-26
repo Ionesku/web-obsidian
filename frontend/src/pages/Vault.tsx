@@ -532,24 +532,25 @@ export function VaultPage() {
       {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
         <aside 
           ref={sidebarRef}
-          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex shadow-lg z-20 transition-all duration-200"
+          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-20 transition-all duration-200"
           style={{ width: `${sidebarWidth}px` }}
         >
-          {/* Left side control panel */}
-          <div className="w-12 bg-white flex flex-col items-center py-4 gap-4 border-r border-slate-200">
+          {/* Top horizontal control panel */}
+          <div className="bg-white border-b border-slate-200 flex items-center gap-1 px-2 py-2">
             <button
               onClick={() => setSidebarCollapsed(true)}
-              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700 transition-colors"
+              className="p-2 rounded hover:bg-slate-100 text-slate-700 transition-colors"
               title="Collapse sidebar"
             >
               <PanelLeftClose className="w-4 h-4" />
             </button>
+            <div className="flex-1" />
             <button
               onClick={() => {
                 setShowFilesSidebar(true);
                 setShowSearchSidebar(false);
               }}
-              className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+              className={`p-2 rounded transition-colors ${
                 showFilesSidebar ? 'bg-slate-200 text-slate-900' : 'hover:bg-slate-100 text-slate-700'
               }`}
               title="Files"
@@ -561,7 +562,7 @@ export function VaultPage() {
                 setShowSearchSidebar(true);
                 setShowFilesSidebar(false);
               }}
-              className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+              className={`p-2 rounded transition-colors ${
                 showSearchSidebar ? 'bg-slate-200 text-slate-900' : 'hover:bg-slate-100 text-slate-700'
               }`}
               title="Search"
@@ -570,7 +571,7 @@ export function VaultPage() {
             </button>
             <button
               onClick={() => {}}
-              className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 text-slate-700 transition-colors"
+              className="p-2 rounded hover:bg-slate-100 text-slate-700 transition-colors"
               title="Bookmarks"
             >
               <BookMarked className="w-4 h-4" />
