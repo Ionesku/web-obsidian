@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
 import { Search } from '@/components/Search';
+import QuickSwitcher from '@/components/QuickSwitcher'; // Import the new component
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { searchEngine } from '@/search';
 import { federatedSearch } from '@/search/parser/federation';
@@ -868,51 +869,14 @@ export function VaultPage() {
           )}
 
           {/* Quick Switcher */}
-          {showQuickSwitcher && (
-            <div className="absolute top-0 left-0 right-0 z-10 bg-white dark:bg-card border-b dark:border-border shadow-lg p-4">
-              <div className="max-w-2xl mx-auto">
-                <Input
-                  type="text"
-                  placeholder="Type to search files..."
-                  value={searchInput}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full"
-                  autoFocus
-                />
-                <button
-                  onClick={() => {
-                    setShowQuickSwitcher(false);
-                    setSearchInput('');
-                    setSearchResults(null);
-                    reset();
-                  }}
-                  className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-black/20 rounded"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                {searchResults && searchResults.hits.length > 0 && (
-                  <div className="mt-2 max-h-96 overflow-y-auto">
-                    {searchResults.hits.map((hit) => (
-                      <button
-                        key={hit.path}
-                        onClick={() => {
-                          handleSelectNote(hit.path);
-                          setShowQuickSwitcher(false);
-                          setSearchInput('');
-                          setSearchResults(null);
-                          reset();
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-black/20 rounded"
-                      >
-                        <div className="font-medium">{hit.title}</div>
-                        <div className="text-xs text-gray-500">{hit.path}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <QuickSwitcher
+            isOpen={showQuickSwitcher}
+            onClose={() => setShowQuickSwitcher(false)}
+            onSelect={(path) => {
+              handleSelectNote(path);
+              setShowQuickSwitcher(false); // Ensure it closes on selection
+            }}
+          />
 
           {/* Tabs */}
           {tabs.length > 0 && (
