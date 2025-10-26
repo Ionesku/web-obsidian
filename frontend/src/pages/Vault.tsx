@@ -527,11 +527,11 @@ export function VaultPage() {
 
   return (
     <div className={`h-screen flex relative ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
-      {/* Sidebar (collapsible) - Overlay on top of everything */}
+      {/* Sidebar (collapsible) - Next to dark sidebar */}
       {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
         <aside 
           ref={sidebarRef}
-          className="fixed left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-30 transition-all duration-200"
+          className="fixed left-12 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-20 transition-all duration-200"
           style={{ width: `${sidebarWidth}px` }}
         >
           <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
@@ -694,7 +694,7 @@ export function VaultPage() {
       {sidebarCollapsed && (
         <button
           onClick={() => setSidebarCollapsed(false)}
-          className="fixed left-0 top-0 bottom-0 w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-30"
+          className="fixed left-12 top-0 bottom-0 w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-20"
           title="Expand sidebar"
         >
           <PanelLeft className="w-4 h-4" />
@@ -800,7 +800,7 @@ export function VaultPage() {
       {/* Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main content */}
-        <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-200" style={{ marginLeft: !sidebarCollapsed && (showFilesSidebar || showSearchSidebar) ? `${sidebarWidth}px` : '0' }}>
+        <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-200" style={{ marginLeft: !sidebarCollapsed && (showFilesSidebar || showSearchSidebar) ? `${sidebarWidth + 48}px` : '0' }}>
           {/* Local search overlay (Ctrl+F) */}
           {showLocalSearch && (
             <div className="absolute top-4 right-4 z-50 bg-white border rounded-lg shadow-xl p-4 min-w-[400px]">
