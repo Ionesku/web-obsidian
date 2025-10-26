@@ -56,13 +56,18 @@ async def create_file(
     try:
         result = await vault.write_file(note.path, note.content)
         
-        # Index via API call
-        async with httpx.AsyncClient() as client:
-            # You might need to build the URL dynamically
-            url = f"http://localhost:8000/api/search/index"
-            headers = {"Authorization": f"Bearer {current_user.access_token}"}
-            await client.post(url, json={"path": note.path}, headers=headers)
-            
+        # Index directly using the indexer
+        indexer = get_indexer()
+        metadata = extract_metadata_for_index(note.content, note.path)
+        
+        indexer.upsert_document(
+            path=note.path,
+            content=note.content,
+            name=note.path.split('/')[-1],
+            tags=metadata['tags'],
+            props=metadata['frontmatter']
+        )
+        
         return result
     except ValueError as e:
         raise HTTPException(
@@ -84,7 +89,7 @@ async def update_file(
 
         # Index directly using the indexer
         indexer = get_indexer()
-        metadata = extract_metadata_for_index(note.content)
+        metadata = extract_metadata_for_index(note.content, path)
         
         indexer.upsert_document(
             path=path,
@@ -139,7 +144,7 @@ async def rename_file(
         
         # Re-index with new path
         file_info = await vault.get_file(request.new_path)
-        metadata = extract_metadata_for_index(file_info['content'])
+        metadata = extract_metadata_for_index(file_info['content'], request.new_path)
         
         indexer.upsert_document(
             path=request.new_path,

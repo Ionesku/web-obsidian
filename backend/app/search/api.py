@@ -116,17 +116,35 @@ async def search(
                 filter=filter_query,
             )
             
-            # Convert results to hits
+            # Convert results to hits with snippets
             hits = []
+            vault = VaultService(current_user.id)
+            
             for result in results[req.offset:req.offset + req.limit]:
                 hit = SearchHit(
                     path=result["path"],
                     score=result.score,
                 )
                 
-                # Add snippets if content is available
-                # Note: content is not stored, so we'd need to read from filesystem
-                # For now, just return basic hit
+                # Try to get snippet from file content
+                try:
+                    file_data = await vault.read_file(result["path"])
+                    content = file_data.get('content', '')
+                    
+                    # Extract snippet around match
+                    if content:
+                        # Get highlights from the result
+                        highlights = result.highlights("content")
+                        if highlights:
+                            hit.snippets = [
+                                Snippet(text=highlight[:200])
+                                for highlight in highlights[:3]  # Max 3 snippets
+                            ]
+                        else:
+                            # Fallback to first 200 chars
+                            hit.snippets = [Snippet(text=content[:200])]
+                except Exception as e:
+                    logger.debug(f"Could not get snippet for {result['path']}: {e}")
                 
                 hits.append(hit)
             

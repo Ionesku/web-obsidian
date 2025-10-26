@@ -11,8 +11,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    # Database
-    DATABASE_URL: str = "sqlite:///data/app.db"
+    # Database - use absolute path to ensure consistency
+    @property
+    def DATABASE_URL(self) -> str:
+        from pathlib import Path
+        db_path = Path(__file__).parent.parent.parent / "data" / "app.db"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        return f"sqlite:///{db_path.as_posix()}"
     
     # Storage paths
     VAULTS_ROOT: str = "data/vaults"

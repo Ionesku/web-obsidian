@@ -93,16 +93,27 @@ export function VaultPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      // Use e.code for keyboard layout-independent shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
         e.preventDefault();
         e.stopPropagation();
         if (e.shiftKey) {
+          // Global search (Ctrl/Cmd + Shift + F)
           setShowSearchSidebar(true);
           setShowFilesSidebar(false);
         } else {
+          // Local search (Ctrl/Cmd + F)
           setShowLocalSearch(true);
+          // Focus will be handled by the useEffect below
         }
       }
+      // Quick switcher (Ctrl/Cmd + K or Ctrl/Cmd + P)
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyK' || e.code === 'KeyP')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowQuickSwitcher(true);
+      }
+      // Escape key
       if (e.key === 'Escape') {
         if (showLocalSearch) setShowLocalSearch(false);
         if (showQuickSwitcher) setShowQuickSwitcher(false);
@@ -110,7 +121,7 @@ export function VaultPage() {
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [showLocalSearch, showQuickSwitcher]);
+  }, [showLocalSearch, showQuickSwitcher, showSearchSidebar, showFilesSidebar]);
 
   // Focus local search input
   useEffect(() => {
