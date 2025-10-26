@@ -59,6 +59,8 @@ export function VaultPage() {
   const [showSearchSidebar, setShowSearchSidebar] = useState(false); // For dedicated search sidebar
   const [showFilesSidebar, setShowFilesSidebar] = useState(true); // For files sidebar
   const [syncQueueSize, setSyncQueueSize] = useState(0); // Sync queue status
+  const [localSearchState, setLocalSearchState] = useState({ query: '', matchCount: 0, currentMatch: 0 });
+  const [globalSearchQuery, setGlobalSearchQuery] = useState<string>(''); // Query to pass to editor from global search
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showNewNoteDialog, setShowNewNoteDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
@@ -288,13 +290,23 @@ export function VaultPage() {
     }
   };
 
-  const handleSelectNote = useCallback(async (path: string) => {
+  const handleSelectNote = useCallback(async (path: string, searchQueryToHighlight?: string) => {
     setSelectedPath(path);
     setActiveTab(path);
     await loadNote(path);
     if (!tabs.some(tab => tab.path === path)) {
       const fileName = path.split('/').pop() || path;
       setTabs(t => [...t, { path, title: fileName }]);
+    }
+    
+    // If called from search, pass query to editor for highlighting
+    if (searchQueryToHighlight) {
+      setGlobalSearchQuery(searchQueryToHighlight);
+      setLocalSearchInput(searchQueryToHighlight);
+    } else {
+      // Clear search when opening normally
+      setGlobalSearchQuery('');
+      setLocalSearchInput('');
     }
   }, [loadNote, tabs]);
 
@@ -440,8 +452,7 @@ export function VaultPage() {
   // Local search within current file (Ctrl+F)
   const handleLocalSearch = (value: string) => {
     setLocalSearchInput(value);
-    // TODO: Implement local search highlighting in editor
-    // This would require CodeMirror extensions for search functionality
+    setGlobalSearchQuery(value);
   };
 
   const toggleDarkMode = () => {
@@ -796,16 +807,41 @@ export function VaultPage() {
                 placeholder="Search in current file..."
                 value={localSearchInput}
                 onChange={(e) => handleLocalSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    // TODO: Implement actual search in CodeMirror
-                    console.log('Searching for:', localSearchInput);
-                  }
-                }}
-                className="w-full"
+                className="w-full mb-2"
               />
+              {localSearchState.matchCount > 0 && (
+                <div className="flex items-center justify-between text-xs text-gray-600 mt-2">
+                  <span>
+                    {localSearchState.currentMatch} of {localSearchState.matchCount}
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        // Trigger Shift+F3 for previous match
+                        const event = new KeyboardEvent('keydown', { key: 'F3', shiftKey: true });
+                        document.dispatchEvent(event);
+                      }}
+                      className="px-2 py-1 rounded hover:bg-slate-200"
+                      title="Previous (Shift+F3)"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Trigger F3 for next match
+                        const event = new KeyboardEvent('keydown', { key: 'F3' });
+                        document.dispatchEvent(event);
+                      }}
+                      className="px-2 py-1 rounded hover:bg-slate-200"
+                      title="Next (F3)"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="text-xs text-gray-500 mt-2">
-                Press Enter to search, Esc to close
+                Use F3/Shift+F3 to navigate, Esc to close
               </div>
             </div>
           )}
@@ -893,6 +929,8 @@ export function VaultPage() {
                   onTagClick={handleTagClick}
                   onAutosaveStatusChange={setAutosaveStatus}
                   vimMode={vimMode}
+                  searchQuery={globalSearchQuery}
+                  onSearchStateChange={setLocalSearchState}
                 />
               </div>
 
@@ -913,6 +951,14 @@ export function VaultPage() {
                     <span className="text-gray-500">
                       Modified: {new Date(currentNoteModified).toLocaleString()}
                     </span>
+                  )}
+                  {localSearchState.matchCount > 0 && (
+                    <>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-blue-600 font-medium">
+                        {localSearchState.currentMatch}/{localSearchState.matchCount} matches
+                      </span>
+                    </>
                   )}
                 </div>
                 <div>

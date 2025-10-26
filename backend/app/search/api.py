@@ -133,16 +133,44 @@ async def search(
                     
                     # Extract snippet around match
                     if content:
+                        lines = content.split('\n')
+                        
                         # Get highlights from the result
-                        highlights = result.highlights("content")
+                        highlights = result.highlights("content", top=3)
                         if highlights:
-                            hit.snippets = [
-                                Snippet(text=highlight[:200])
-                                for highlight in highlights[:3]  # Max 3 snippets
-                            ]
+                            hit.snippets = []
+                            for highlight_text in highlights:
+                                # Find which line contains this highlight
+                                line_num = 0
+                                for i, line in enumerate(lines):
+                                    if highlight_text[:50] in line:
+                                        line_num = i + 1  # 1-indexed
+                                        break
+                                
+                                # Extract match positions within the line
+                                ranges = []
+                                if line_num > 0:
+                                    line_text = lines[line_num - 1]
+                                    # Simple word matching for ranges
+                                    for term in req.terms:
+                                        if term.type in ['word', 'phrase']:
+                                            value = term.value or ''
+                                            idx = line_text.lower().find(value.lower())
+                                            if idx >= 0:
+                                                ranges.append([idx, idx + len(value)])
+                                
+                                hit.snippets.append(Snippet(
+                                    line=line_num,
+                                    text=highlight_text[:200],
+                                    ranges=ranges if ranges else []
+                                ))
                         else:
                             # Fallback to first 200 chars
-                            hit.snippets = [Snippet(text=content[:200])]
+                            hit.snippets = [Snippet(
+                                line=1,
+                                text=content[:200],
+                                ranges=[]
+                            )]
                 except Exception as e:
                     logger.debug(f"Could not get snippet for {result['path']}: {e}")
                 

@@ -24,6 +24,8 @@ export interface EditorProps {
   debug?: boolean;
   onAutosaveStatusChange?: (status: AutosaveStatus) => void;
   className?: string;
+  searchQuery?: string;
+  onSearchStateChange?: (state: { query: string; matchCount: number; currentMatch: number }) => void;
 }
 
 export interface WikiLink {

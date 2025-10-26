@@ -39,6 +39,7 @@ import { wikiLinkPlugin, wikiLinkTheme, handleWikiLinkClick } from '@/lib/codemi
 import { wikiLinkAutocomplete } from '@/lib/codemirror/autocomplete';
 import { transclusionPlugin, transclusionTheme } from '@/lib/codemirror/transclusion';
 import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
+import { searchHighlight, createSearchAPI, type SearchAPI } from '@/lib/codemirror/search-highlight';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -60,9 +61,12 @@ export function MarkdownEditor({
   debug = false,
   onAutosaveStatusChange,
   className = '',
+  searchQuery,
+  onSearchStateChange,
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const searchAPIRef = useRef<SearchAPI | null>(null);
   
   // Use refs to avoid recreating editor extensions on every change
   const onSaveRef = useRef(onSave);
@@ -165,6 +169,7 @@ export function MarkdownEditor({
         transclusionTheme,
         tagPlugin,
         tagTheme,
+        searchHighlight(),
 
         // Click handler for wiki links and tags
         EditorView.domEventHandlers({
@@ -295,13 +300,22 @@ export function MarkdownEditor({
     });
 
     viewRef.current = view;
+    
+    // Create search API
+    searchAPIRef.current = createSearchAPI(view);
+    
+    // Apply initial search query if provided
+    if (searchQuery) {
+      searchAPIRef.current.setQuery(searchQuery);
+    }
 
     return () => {
       view.destroy();
+      searchAPIRef.current = null;
     };
     // Only recreate editor when noteId changes (file switch), not on content changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId]);
+  }, [noteId, searchQuery]);
 
   // Save on blur
   useEffect(() => {
@@ -320,6 +334,30 @@ export function MarkdownEditor({
       };
     }
   }, [autosaveContent]);
+  
+  // Handle search query changes
+  useEffect(() => {
+    if (searchAPIRef.current) {
+      if (searchQuery) {
+        searchAPIRef.current.setQuery(searchQuery);
+        
+        // Notify parent of state changes
+        if (onSearchStateChange) {
+          const state = searchAPIRef.current.getState();
+          onSearchStateChange({
+            query: state.query,
+            matchCount: state.matches.length,
+            currentMatch: state.currentMatchIndex + 1,
+          });
+        }
+      } else {
+        searchAPIRef.current.clearSearch();
+        if (onSearchStateChange) {
+          onSearchStateChange({ query: '', matchCount: 0, currentMatch: 0 });
+        }
+      }
+    }
+  }, [searchQuery, onSearchStateChange]);
 
   /**
    * Update editor when vim mode changes

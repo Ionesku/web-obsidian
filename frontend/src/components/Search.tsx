@@ -10,7 +10,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 
 interface SearchProps {
-  onResultClick?: (path: string) => void;
+  onResultClick?: (path: string, query?: string) => void;
   initialQuery?: string;
 }
 
@@ -271,11 +271,17 @@ function SearchHitCard({
 }: { 
   hit: SearchHit; 
   query: string;
-  onResultClick?: (path: string) => void;
+  onResultClick?: (path: string, query?: string) => void;
 }) {
   const handleOpen = () => {
     if (onResultClick) {
-      onResultClick(hit.path);
+      // Extract search terms from query to pass for highlighting
+      const terms = query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(w => !w.includes(':') && !w.startsWith('[') && w.length > 2)
+        .join(' ');
+      onResultClick(hit.path, terms || query);
     }
   };
 
