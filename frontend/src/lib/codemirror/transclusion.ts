@@ -10,8 +10,7 @@ import {
   ViewUpdate,
   WidgetType,
 } from '@codemirror/view';
-import { RangeSetBuilder, StateField, StateEffect } from '@codemirror/state';
-import { syntaxTree } from '@codemirror/language';
+import { RangeSetBuilder } from '@codemirror/state';
 import { notesDB } from '../db';
 
 /**
@@ -123,97 +122,76 @@ class TransclusionWidget extends WidgetType {
  * Cache for loaded transclusions
  */
 const transclusionCache = new Map<string, string | null>();
+const pendingTransclusions = new Set<string>();
 
 /**
- * Load transclusion content
+ * Load transclusion content and trigger a view update upon completion.
  */
-async function loadTransclusion(noteTitle: string): Promise<string | null> {
-  if (transclusionCache.has(noteTitle)) {
-    return transclusionCache.get(noteTitle)!;
+async function loadTransclusion(noteTitle: string, view: EditorView): Promise<void> {
+  if (transclusionCache.has(noteTitle) || pendingTransclusions.has(noteTitle)) {
+    return;
   }
+
+  pendingTransclusions.add(noteTitle);
 
   try {
     const note = await notesDB.getNoteByTitle(noteTitle);
     const content = note?.content || null;
     transclusionCache.set(noteTitle, content);
-    return content;
   } catch (error) {
     console.error('Error loading transclusion:', error);
-    transclusionCache.set(noteTitle, null);
-    return null;
+    transclusionCache.set(noteTitle, null); // Cache failure
+  } finally {
+    pendingTransclusions.delete(noteTitle);
+    // Dispatch an empty transaction to trigger a view update.
+    // Use setTimeout to ensure it runs after the current update cycle.
+    setTimeout(() => view.dispatch({}), 0);
   }
 }
 
-// This state field will hold our decorations
-const transclusionDecorations = StateField.define<DecorationSet>({
-  create() {
-    return Decoration.none;
-  },
-  update(decorations, transaction) {
-    // Handle changes and effects here
-    if (transaction.docChanged) {
-      // If doc changed, we might need to re-evaluate transclusions
-      // This can be optimized, but for now, let's just clear
-      return Decoration.none; 
-    }
-    for (let effect of transaction.effects) {
-      if (effect.is(addTransclusionEffect)) {
-        return decorations.update({ add: effect.value, sort: true });
-      }
-    }
-    return decorations;
-  }
-});
-
-// An effect to add our decorations
-const addTransclusionEffect = StateEffect.define<Decoration[]>();
-
-
-function findTransclusions(view: EditorView) {
-  const decorations: Decoration[] = [];
-  const doc = view.state.doc;
+/**
+ * Builds the decoration set for transclusions found in the visible ranges of the editor.
+ */
+function buildTransclusionDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const decoratedLines = new Set<number>();
 
   for (const { from, to } of view.visibleRanges) {
-    syntaxTree(view.state).iterate({
-      from,
-      to,
-      enter: (node) => {
-        if (node.name.includes('Transclusion')) { // Assuming your syntax highlighting marks this up
-          const line = doc.lineAt(node.from);
-          const text = doc.sliceString(node.from, node.to);
-          const match = /!\[\[([^\]]+)\]\]/.exec(text);
-          if (match) {
-            const noteTitle = match[1];
+    let pos = from;
+    while (pos <= to) {
+      const line = view.state.doc.lineAt(pos);
+      if (decoratedLines.has(line.number)) {
+        pos = line.to + 1;
+        continue;
+      }
 
-            // Replace the entire line
-            const deco = Decoration.replace({
-              widget: new TransclusionWidget(noteTitle, null, true), // Start with loading state
-            });
-            decorations.push(deco.range(line.from, line.to));
+      const text = line.text;
+      // Find the first transclusion on the line
+      const match = /!\[\[([^\]]+)\]\]/.exec(text);
 
-            // Asynchronously load content and update the widget
-            loadTransclusion(noteTitle).then(content => {
-              const newDeco = Decoration.replace({
-                widget: new TransclusionWidget(noteTitle, content, false),
-              });
-              
-              // We need to find the line again as the doc could have changed
-              const currentDoc = view.state.doc.toString();
-              const newMatchPos = currentDoc.indexOf(text);
+      if (match) {
+        const noteTitle = match[1];
+        let widget;
 
-              if (newMatchPos !== -1) {
-                 const newLine = view.state.doc.lineAt(newMatchPos);
-                 view.dispatch({
-                    effects: addTransclusionEffect.of([newDeco.range(newLine.from, newLine.to)])
-                 });
-              }
-            });
-          }
+        if (transclusionCache.has(noteTitle)) {
+          // Content is cached, display it
+          widget = new TransclusionWidget(noteTitle, transclusionCache.get(noteTitle)!, false);
+        } else {
+          // Content not cached, show loading state and start loading
+          widget = new TransclusionWidget(noteTitle, null, true);
+          loadTransclusion(noteTitle, view);
         }
-      },
-    });
+        
+        const deco = Decoration.replace({ widget });
+        builder.add(line.from, line.to, deco);
+        decoratedLines.add(line.number);
+      }
+
+      pos = line.to + 1;
+    }
   }
-  return decorations;
+
+  return builder.finish();
 }
 
 
@@ -222,24 +200,17 @@ function findTransclusions(view: EditorView) {
  */
 export const transclusionPlugin = ViewPlugin.fromClass(
   class {
+    decorations: DecorationSet;
+
     constructor(view: EditorView) {
-      this.updateDecorations(view);
+      this.decorations = buildTransclusionDecorations(view);
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged) {
-        this.updateDecorations(update.view);
+      if (update.docChanged || update.viewportChanged || !this.decorations.size) {
+        this.decorations = buildTransclusionDecorations(update.view);
       }
     }
-    
-    updateDecorations(view: EditorView) {
-        const decorations = findTransclusions(view);
-        view.dispatch({
-            effects: addTransclusionEffect.of(decorations)
-        });
-    }
-
-    destroy() {}
   },
   {
     decorations: (v) => v.decorations,
@@ -269,4 +240,5 @@ export const transclusionTheme = EditorView.baseTheme({
     userSelect: 'none',
   },
 });
+
 
