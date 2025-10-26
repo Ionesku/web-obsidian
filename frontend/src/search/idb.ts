@@ -253,7 +253,7 @@ export class SearchDatabase extends Dexie {
     
     const records = await this.tasks
       .where('done')
-      .equals(done ? 1 : 0)
+      .equals(done)
       .toArray();
     return new Set(records.map(r => r.path));
   }

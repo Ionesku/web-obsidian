@@ -9,6 +9,7 @@ from whoosh.writing import AsyncWriter
 import hashlib
 
 from .whoosh_schema import get_index
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +17,8 @@ logger = logging.getLogger(__name__)
 class MarkdownIndexer:
     """Manages indexing of markdown files"""
     
-    def __init__(self, index_dir: str = "/data/whoosh"):
-        self.index_dir = index_dir
+    def __init__(self, index_dir: str = None):
+        self.index_dir = index_dir or settings.WHOOSH_INDEX_DIR
         self._index = None
     
     @property
@@ -212,10 +213,10 @@ class MarkdownIndexer:
 _indexer: Optional[MarkdownIndexer] = None
 
 
-def get_indexer(index_dir: str = "/data/whoosh") -> MarkdownIndexer:
+def get_indexer(index_dir: str = None) -> MarkdownIndexer:
     """Get or create singleton indexer instance"""
     global _indexer
     if _indexer is None:
-        _indexer = MarkdownIndexer(index_dir)
+        _indexer = MarkdownIndexer(index_dir or settings.WHOOSH_INDEX_DIR)
     return _indexer
 

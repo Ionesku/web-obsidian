@@ -6,8 +6,8 @@ from pathlib import Path
 from app.auth import get_current_user
 from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, RenameRequest
 from app.vault_service import VaultService
-from app.search_service import SearchService
 from app.search import get_indexer
+from app.search.markdown_parser import extract_metadata_for_index
 
 router = APIRouter()
 
@@ -15,11 +15,6 @@ router = APIRouter()
 def get_vault_service(current_user: User = Depends(get_current_user)) -> VaultService:
     """Dependency to get vault service for current user"""
     return VaultService(current_user.id)
-
-
-def get_search_service(current_user: User = Depends(get_current_user)) -> SearchService:
-    """Dependency to get search service for current user"""
-    return SearchService(current_user.id)
 
 
 @router.get("/list", response_model=List[FileInfo])
@@ -54,25 +49,22 @@ async def read_file(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_file(
     note: NoteContent,
-    vault: VaultService = Depends(get_vault_service),
-    search: SearchService = Depends(get_search_service)
+    vault: VaultService = Depends(get_vault_service)
 ):
     """Create a new file"""
     try:
         result = await vault.write_file(note.path, note.content)
         
-        # Index the file for search (old system)
-        search.index_file(note.path, note.content)
-        
-        # Index for Whoosh (new advanced search)
+        # Index for Whoosh search
         indexer = get_indexer()
-        # TODO: Extract metadata from content (tags, props)
+        # Extract metadata from content
+        metadata = extract_metadata_for_index(note.content, note.path)
         indexer.upsert_document(
             path=note.path,
             content=note.content,
-            name=Path(note.path).name,
-            tags=[],  # Will be extracted from content
-            props={},  # Will be extracted from frontmatter
+            name=metadata['name'],
+            tags=metadata['tags'],
+            props=metadata['props'],
         )
         
         return result
@@ -87,24 +79,22 @@ async def create_file(
 async def update_file(
     path: str,
     note: NoteContent,
-    vault: VaultService = Depends(get_vault_service),
-    search: SearchService = Depends(get_search_service)
+    vault: VaultService = Depends(get_vault_service)
 ):
     """Update a file"""
     try:
         result = await vault.write_file(path, note.content)
         
-        # Update search index (old system)
-        search.index_file(path, note.content)
-        
-        # Update Whoosh index (new advanced search)
+        # Update Whoosh index
         indexer = get_indexer()
+        # Extract metadata from content
+        metadata = extract_metadata_for_index(note.content, path)
         indexer.upsert_document(
             path=path,
             content=note.content,
-            name=Path(path).name,
-            tags=[],  # TODO: Extract from content
-            props={},  # TODO: Extract from frontmatter
+            name=metadata['name'],
+            tags=metadata['tags'],
+            props=metadata['props'],
         )
         
         return result
@@ -118,15 +108,15 @@ async def update_file(
 @router.delete("/{path:path}")
 async def delete_file(
     path: str,
-    vault: VaultService = Depends(get_vault_service),
-    search: SearchService = Depends(get_search_service)
+    vault: VaultService = Depends(get_vault_service)
 ):
     """Delete a file"""
     try:
         result = await vault.delete_file(path)
         
-        # Remove from search index
-        search.remove_file(path)
+        # Remove from Whoosh index
+        indexer = get_indexer()
+        indexer.delete_document(path)
         
         return result
     except ValueError as e:
@@ -139,19 +129,26 @@ async def delete_file(
 @router.post("/rename")
 async def rename_file(
     request: RenameRequest,
-    vault: VaultService = Depends(get_vault_service),
-    search: SearchService = Depends(get_search_service)
+    vault: VaultService = Depends(get_vault_service)
 ):
     """Rename or move a file"""
     try:
         result = await vault.rename_file(request.old_path, request.new_path)
         
-        # Update search index
-        search.remove_file(request.old_path)
+        # Update Whoosh index
+        indexer = get_indexer()
+        indexer.delete_document(request.old_path)
         
         # Read and reindex with new path
         file_data = await vault.read_file(request.new_path)
-        search.index_file(request.new_path, file_data['content'])
+        metadata = extract_metadata_for_index(file_data['content'], request.new_path)
+        indexer.upsert_document(
+            path=request.new_path,
+            content=file_data['content'],
+            name=metadata['name'],
+            tags=metadata['tags'],
+            props=metadata['props'],
+        )
         
         return result
     except (FileNotFoundError, ValueError) as e:

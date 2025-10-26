@@ -13,6 +13,9 @@ from whoosh import index
 from whoosh.qparser import QueryParser, MultifieldParser, OrGroup
 from typing import Optional
 import logging
+from pathlib import Path
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +69,7 @@ def ensure_index(index_dir: str) -> index.Index:
     return index.create_in(index_dir, schema)
 
 
-def get_index(index_dir: str = "/data/whoosh") -> index.Index:
+def get_index(index_dir: str = None) -> index.Index:
     """
     Get or create Whoosh index
     
@@ -76,5 +79,7 @@ def get_index(index_dir: str = "/data/whoosh") -> index.Index:
     Returns:
         Index object
     """
+    if index_dir is None:
+        index_dir = settings.WHOOSH_INDEX_DIR
     return ensure_index(index_dir)
 

@@ -5,6 +5,7 @@
 import { executeLocal, pathsToHits } from './execute-local';
 import { planQuery, extractServerTerms } from './query-plan';
 import { parseQuery } from './query-parse';
+import { api } from '@/lib/api';
 import type {
   SearchResult,
   SearchHit,
@@ -212,10 +213,10 @@ function mergeHits(
   return merged;
 }
 
-// Get auth token from store
+// Get auth token from API client (it handles cookie/localStorage)
 function getAuthToken(): string {
-  // TODO: integrate with your auth store
-  return localStorage.getItem('auth_token') || '';
+  // Use api client which handles both cookie and localStorage
+  return api.getToken() || '';
 }
 
 // Explain query (for debugging)

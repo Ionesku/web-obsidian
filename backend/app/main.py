@@ -8,7 +8,7 @@ import logging
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, files, search, canvas
+from app.api import auth, files, canvas
 from app.search import search_router
 from app.middleware import LoggingMiddleware, ErrorHandlingMiddleware, SecurityHeadersMiddleware
 from app.logging_config import setup_logging
@@ -59,8 +59,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(files.router, prefix="/files", tags=["Files"])
-app.include_router(search.router, prefix="/search", tags=["Search"])
-app.include_router(search_router, prefix="/api", tags=["Advanced Search"])  # New Whoosh-based search
+app.include_router(search_router, prefix="/api", tags=["Search"])  # Whoosh-based search
 app.include_router(canvas.router, prefix="/canvas", tags=["Canvas"])
 
 
