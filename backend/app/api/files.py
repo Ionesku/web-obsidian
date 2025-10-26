@@ -65,7 +65,7 @@ async def create_file(
             content=note.content,
             name=note.path.split('/')[-1],
             tags=metadata['tags'],
-            props=metadata['frontmatter']
+            props=metadata['props']
         )
         
         return result
@@ -96,7 +96,7 @@ async def update_file(
             content=note.content,
             name=path.split('/')[-1],
             tags=metadata['tags'],
-            props=metadata['frontmatter']
+            props=metadata['props']
         )
 
         return result
@@ -151,7 +151,7 @@ async def rename_file(
             content=file_info['content'],
             name=request.new_path.split('/')[-1],
             tags=metadata['tags'],
-            props=metadata['frontmatter']
+            props=metadata['props']
         )
             
         return result
