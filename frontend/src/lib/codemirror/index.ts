@@ -7,4 +7,5 @@ export * from './wiki-links';
 export * from './autocomplete';
 export * from './transclusion';
 export * from './search-highlight';
+export * from './code-languages';
 

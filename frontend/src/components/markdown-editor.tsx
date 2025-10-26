@@ -40,6 +40,7 @@ import { wikiLinkAutocomplete } from '@/lib/codemirror/autocomplete';
 import { transclusionPlugin, transclusionTheme } from '@/lib/codemirror/transclusion';
 import { tagPlugin, tagTheme, handleTagClick } from '@/lib/codemirror/tags';
 import { searchHighlight, createSearchAPI, type SearchAPI } from '@/lib/codemirror/search-highlight';
+import { getLanguageSupport } from '@/lib/codemirror/code-languages';
 import { notesDB } from '@/lib/db';
 import type { EditorProps } from '@/lib/codemirror/types';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -158,8 +159,14 @@ export function MarkdownEditor({
           ...completionKeymap,
         ]),
 
-        // Markdown support with code blocks
-        markdown(),
+        // Markdown support with code blocks and language highlighting
+        markdown({
+          codeLanguages: (info) => {
+            // Try to get language support for the code block language
+            const languageSupport = getLanguageSupport(info);
+            return languageSupport?.language || null;
+          },
+        }),
 
         // Custom extensions
         wikiLinkPlugin,
