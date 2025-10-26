@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/markdown-editor';
 import { SaveStatusIndicator } from '@/components/SaveStatusIndicator';
+import { Search } from '@/components/Search';
 import type { AutosaveStatus } from '@/lib/codemirror/types';
 import {
   File,
@@ -24,12 +25,11 @@ import {
   BookMarked,
   ChevronsUpDown,
   LogOut,
-  User,
   Moon,
   Sun,
   PanelLeftClose,
   PanelLeft,
-  GripVertical,
+  PanelRight,
 } from 'lucide-react';
 
 interface FileNode {
@@ -49,11 +49,14 @@ export function VaultPage() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { files, currentNote, loadFiles, loadNote, saveNote, createNote, isLoading } = useVaultStore();
-  const { query, results, search, searchByTag, clearSearch, setQuery } = useSearchStore();
+  const { results, search, searchByTag, clearSearch, setQuery } = useSearchStore();
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
+  const [localSearchInput, setLocalSearchInput] = useState(''); // For Ctrl+F local search
+  const [showLocalSearch, setShowLocalSearch] = useState(false); // For Ctrl+F overlay
+  const [showSearchSidebar, setShowSearchSidebar] = useState(false); // For dedicated search sidebar
+  const [showFilesSidebar, setShowFilesSidebar] = useState(true); // For files sidebar
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showNewNoteDialog, setShowNewNoteDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
@@ -85,6 +88,36 @@ export function VaultPage() {
   });
   
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const localSearchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F for local search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
+        e.preventDefault();
+        setShowLocalSearch(true);
+        // Focus input after state updates
+        setTimeout(() => {
+          localSearchInputRef.current?.focus();
+        }, 0);
+      }
+      
+      // Escape to close search overlays
+      if (e.key === 'Escape') {
+        if (showLocalSearch) {
+          setShowLocalSearch(false);
+          setLocalSearchInput('');
+        }
+        if (showQuickSwitcher) {
+          setShowQuickSwitcher(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showLocalSearch, showQuickSwitcher]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -421,11 +454,19 @@ export function VaultPage() {
   const handleTagClick = (tag: string) => {
     // Remove # if present
     const cleanTag = tag.replace(/^#/, '');
-    // Use the tag directly as search query - whoosh will find it in tags field
+    // Use the tag directly as search query
     const searchQuery = cleanTag;
-    setSearchInput(searchQuery);
-    search(searchQuery); // Direct search, not through handleSearch
-    setShowSearch(true);
+    setQuery(searchQuery);
+    search(searchQuery);
+    setShowSearchSidebar(true); // Open search sidebar
+    setShowFilesSidebar(false); // Hide files sidebar
+  };
+
+  // Local search within current file (Ctrl+F)
+  const handleLocalSearch = (value: string) => {
+    setLocalSearchInput(value);
+    // TODO: Implement local search highlighting in editor
+    // This would require CodeMirror extensions for search functionality
   };
 
   const toggleDarkMode = () => {
@@ -438,21 +479,71 @@ export function VaultPage() {
   return (
     <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
       {/* Left icon panel */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4">
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-2">
+        {/* Top menu bar icons */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {sidebarCollapsed ? <PanelRight className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+        </button>
+        
         <button
           onClick={() => {}}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          title="Bookmarks"
+        >
+          <BookMarked className="w-5 h-5" />
+        </button>
+        
+        <button
+          onClick={() => {
+            if (showSearchSidebar) {
+              // If search is already open, close it and open files
+              setShowSearchSidebar(false);
+              setShowFilesSidebar(true);
+            } else {
+              // Open search and close files
+              setShowSearchSidebar(true);
+              setShowFilesSidebar(false);
+            }
+          }}
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+            showSearchSidebar
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+          title="Search (Find)"
+        >
+          <SearchIcon className="w-5 h-5" />
+        </button>
+        
+        <button
+          onClick={() => {
+            if (showFilesSidebar) {
+              // If files is already open, close it and open search
+              setShowFilesSidebar(false);
+              setShowSearchSidebar(true);
+            } else {
+              // Open files and close search
+              setShowFilesSidebar(true);
+              setShowSearchSidebar(false);
+            }
+          }}
+          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+            showFilesSidebar
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+          }`}
           title="Files"
         >
           <FileText className="w-5 h-5" />
         </button>
-        <button
-          onClick={() => setShowSearch(!showSearch)}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Search"
-        >
-          <SearchIcon className="w-5 h-5" />
-        </button>
+        
+        {/* Divider */}
+        <div className="w-6 h-px bg-slate-600 my-1" />
+        
         <button
           onClick={handleDailyNote}
           className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
@@ -482,13 +573,6 @@ export function VaultPage() {
           <Grid3x3 className="w-5 h-5" />
         </button>
         <button
-          onClick={() => {}}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Bookmarks"
-        >
-          <BookMarked className="w-5 h-5" />
-        </button>
-        <button
           onClick={() => setVimMode(!vimMode)}
           className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
             vimMode 
@@ -504,7 +588,7 @@ export function VaultPage() {
         <div className="flex-1" />
         
         {/* User menu at bottom */}
-          <div className="relative">
+        <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
@@ -518,7 +602,7 @@ export function VaultPage() {
               <div className="px-4 py-2 border-b">
                 <div className="text-sm font-semibold">{user?.username}</div>
                 <div className="text-xs text-gray-500">{user?.email}</div>
-          </div>
+              </div>
               <button
                 onClick={toggleDarkMode}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 flex items-center gap-2"
@@ -536,155 +620,132 @@ export function VaultPage() {
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
-        </div>
+            </div>
           )}
         </div>
       </aside>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        {!sidebarCollapsed && (
+        {/* Sidebar - Files or Search */}
+        {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
           <aside 
             ref={sidebarRef}
             className="bg-white border-r flex flex-col relative"
             style={{ width: `${sidebarWidth}px` }}
           >
-            <div className="p-4 space-y-2 border-b">
-              <div className="flex gap-2">
-                <button
-              onClick={() => setShowNewNoteDialog(true)}
-                  className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
-                  title="New note"
-                >
-                  <FilePlus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setShowNewFolderDialog(true)}
-                  className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
-                  title="New folder"
-                >
-                  <FolderPlus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={toggleAllFolders}
-                  className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
-                  title={allExpanded ? "Collapse all" : "Expand all"}
-                >
-                  <ChevronsUpDown className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setSidebarCollapsed(true)}
-                  className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
-                  title="Collapse sidebar"
-                >
-                  <PanelLeftClose className="w-4 h-4" />
-                </button>
-              </div>
-
-            {showNewNoteDialog && (
-              <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
-                <Input
-                  placeholder="Note name"
-                  value={newNoteName}
-                  onChange={(e) => setNewNoteName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCreateNote();
-                    if (e.key === 'Escape') {
-                      setShowNewNoteDialog(false);
-                      setNewNoteName('');
-                    }
-                  }}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleCreateNote}>
-                    Create
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowNewNoteDialog(false);
-                      setNewNoteName('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-              {showNewFolderDialog && (
-                <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
-                  <Input
-                    placeholder="Folder name"
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCreateFolder();
-                      if (e.key === 'Escape') {
-                        setShowNewFolderDialog(false);
-                        setNewFolderName('');
-                      }
-                    }}
-                    autoFocus
-                  />
+            {showSearchSidebar ? (
+              /* Search Sidebar */
+              <Search onResultClick={handleSelectNote} />
+            ) : (
+              /* Files Sidebar */
+              <>
+                <div className="p-4 space-y-2 border-b">
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleCreateFolder}>
-                      Create
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowNewFolderDialog(false);
-                        setNewFolderName('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+                    <button
+                      onClick={() => setShowNewNoteDialog(true)}
+                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                      title="New note"
+                    >
+                      <FilePlus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowNewFolderDialog(true)}
+                      className="flex-1 px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
+                      title="New folder"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={toggleAllFolders}
+                      className="px-3 py-2 text-sm border rounded hover:bg-slate-50 transition-colors"
+                      title={allExpanded ? "Collapse all" : "Expand all"}
+                    >
+                      <ChevronsUpDown className="w-4 h-4" />
+                    </button>
+                  </div>
 
-            <div className="flex-1 overflow-y-auto px-2 py-2">
-              <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
-                {query ? 'Search Results' : 'Files'}
-            </h3>
-            
-            {isLoading ? (
-                <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
-            ) : query && results.length > 0 ? (
-              <div className="space-y-1">
-                {results.map((result) => (
-                  <button
-                    key={result.path}
-                    onClick={() => handleSelectNote(result.path)}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 transition-colors ${
-                      selectedPath === result.path ? 'bg-blue-50 text-blue-600' : ''
-                    }`}
-                  >
-                      <div className="font-medium truncate flex items-center gap-1">
-                        <File className="w-4 h-4" />
-                        {result.title}
+                  {showNewNoteDialog && (
+                    <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
+                      <Input
+                        placeholder="Note name"
+                        value={newNoteName}
+                        onChange={(e) => setNewNoteName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateNote();
+                          if (e.key === 'Escape') {
+                            setShowNewNoteDialog(false);
+                            setNewNoteName('');
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreateNote}>
+                          Create
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowNewNoteDialog(false);
+                            setNewNoteName('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                    {result.preview && (
-                      <div className="text-xs text-gray-500 truncate mt-1">
-                        {result.preview}
+                    </div>
+                  )}
+
+                  {showNewFolderDialog && (
+                    <div className="p-3 border rounded-lg bg-slate-50 space-y-2">
+                      <Input
+                        placeholder="Folder name"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateFolder();
+                          if (e.key === 'Escape') {
+                            setShowNewFolderDialog(false);
+                            setNewFolderName('');
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreateFolder}>
+                          Create
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowNewFolderDialog(false);
+                            setNewFolderName('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            ) : query ? (
-                <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
-              ) : (
-                <div className="space-y-0.5">
-                  {renderFileTree(fileTree)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+                <div className="flex-1 overflow-y-auto px-2 py-2">
+                  <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    Files
+                  </h3>
+                  
+                  {isLoading ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {renderFileTree(fileTree)}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
             
             {/* Resize handle */}
             <div
@@ -707,28 +768,33 @@ export function VaultPage() {
 
         {/* Main content */}
         <main className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Search overlay */}
-          {showSearch && (
-            <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b shadow-lg p-4">
-              <div className="max-w-2xl mx-auto">
-                <Input
-                  type="text"
-                  placeholder="Search notes... (use tag:tagname for tag search)"
-                  value={searchInput}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full"
-                  autoFocus
-                />
+          {/* Local search overlay (Ctrl+F) */}
+          {showLocalSearch && (
+            <div className="absolute top-4 right-4 z-50 bg-white border rounded-lg shadow-xl p-4 min-w-[400px]">
+              <div className="flex items-center gap-2 mb-2">
+                <SearchIcon className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium">Find in file</span>
+                <div className="flex-1" />
                 <button
                   onClick={() => {
-                    setShowSearch(false);
-                    setSearchInput('');
-                    clearSearch();
+                    setShowLocalSearch(false);
+                    setLocalSearchInput('');
                   }}
-                  className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded"
+                  className="p-1 hover:bg-slate-100 rounded"
                 >
                   <X className="w-4 h-4" />
                 </button>
+              </div>
+              <Input
+                ref={localSearchInputRef}
+                type="text"
+                placeholder="Search in current file..."
+                value={localSearchInput}
+                onChange={(e) => handleLocalSearch(e.target.value)}
+                className="w-full"
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                Press Esc to close
               </div>
             </div>
           )}
@@ -797,20 +863,20 @@ export function VaultPage() {
                   >
                     <X className="w-3 h-3" />
                   </button>
-                  </button>
-                ))}
-              </div>
-            )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {currentNote && currentNote.path === selectedPath ? (
             <>
               {/* Editor */}
               <div className="flex-1 overflow-hidden">
-            <MarkdownEditor
+                <MarkdownEditor
                   key={selectedPath}
                   noteId={selectedPath}
-              initialContent={currentNote.content}
-              onSave={handleSave}
+                  initialContent={currentNote.content}
+                  onSave={handleSave}
                   onChange={handleContentChange}
                   onWikiLinkClick={handleWikiLinkClick}
                   onTagClick={handleTagClick}

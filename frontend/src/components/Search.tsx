@@ -9,7 +9,11 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 
-export function Search() {
+interface SearchProps {
+  onResultClick?: (path: string) => void;
+}
+
+export function Search({ onResultClick }: SearchProps) {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<SearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -186,7 +190,12 @@ export function Search() {
             {/* Hits */}
             <div className="space-y-2">
               {result.hits.map((hit) => (
-                <SearchHitCard key={hit.path} hit={hit} query={query} />
+                <SearchHitCard 
+                  key={hit.path} 
+                  hit={hit} 
+                  query={query}
+                  onResultClick={onResultClick}
+                />
               ))}
             </div>
 
@@ -247,10 +256,19 @@ export function Search() {
 }
 
 // Search hit card component
-function SearchHitCard({ hit, query }: { hit: SearchHit; query: string }) {
+function SearchHitCard({ 
+  hit, 
+  query, 
+  onResultClick 
+}: { 
+  hit: SearchHit; 
+  query: string;
+  onResultClick?: (path: string) => void;
+}) {
   const handleOpen = () => {
-    // TODO: Navigate to file
-    window.location.hash = `#/vault/${encodeURIComponent(hit.path)}`;
+    if (onResultClick) {
+      onResultClick(hit.path);
+    }
   };
 
   return (
