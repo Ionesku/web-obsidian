@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Fuse from 'fuse.js';
 import { api } from '../lib/api';
+import { useVaultStore } from '../stores/vault'; // Import the vault store
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
@@ -44,25 +45,16 @@ interface QuickSwitcherProps {
 
 const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect }) => {
   const [query, setQuery] = useState('');
-  const [files, setFiles] = useState<VaultFile[]>([]);
+  const { files: allFiles } = useVaultStore(); // Get files from the store
   const [results, setResults] = useState<VaultFile[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch all files from the vault
-  useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        const fileList = await api.listFiles(''); // Fetch all files
-        // Filter out folders and only keep markdown files
-        const mdFiles = fileList.filter(f => f.type === 'file' && f.name.endsWith('.md'));
-        setFiles(mdFiles);
-      } catch (error) {
-        console.error('Failed to fetch files:', error);
-      }
-    };
-    fetchFiles();
-  }, []);
+  // Filter markdown files from the store
+  const files = useMemo(() => 
+    allFiles.filter(f => f.type === 'file' && f.name.endsWith('.md')),
+    [allFiles]
+  );
 
   // Fuse.js fuzzy search instance
   const fuse = useMemo(() => new Fuse(files, {
