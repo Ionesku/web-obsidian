@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from app.auth import get_current_user
-from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, RenameRequest
+from app import models, schemas
 from app.vault_service import VaultService
 from app.search import get_indexer
 from app.search.markdown_parser import extract_metadata_for_index
@@ -14,12 +14,12 @@ from app.utils.paths import safe_join
 router = APIRouter()
 
 
-def get_vault_service(current_user: User = Depends(get_current_user)) -> VaultService:
+def get_vault_service(current_user: models.User = Depends(get_current_user)) -> VaultService:
     """Dependency to get vault service for current user"""
     return VaultService(current_user.id)
 
 
-@router.get("/list", response_model=List[FileInfo])
+@router.get("/list", response_model=List[schemas.FileInfo])
 async def list_files(
     folder: str = '',
     vault: VaultService = Depends(get_vault_service)
@@ -28,7 +28,7 @@ async def list_files(
     return await vault.list_files(folder)
 
 
-@router.get("/{path:path}", response_model=NoteResponse)
+@router.get("/{path:path}", response_model=schemas.NoteResponse)
 async def read_file(
     path: str,
     vault: VaultService = Depends(get_vault_service)
@@ -50,9 +50,9 @@ async def read_file(
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_file(
-    note: NoteContent,
+    note: schemas.NoteContent,
     vault: VaultService = Depends(get_vault_service),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Create a new file"""
     try:
@@ -81,9 +81,9 @@ async def create_file(
 @router.put("/{path:path}")
 async def update_file(
     path: str,
-    note: NoteContent,
+    note: schemas.NoteContent,
     vault: VaultService = Depends(get_vault_service),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Update a file"""
     try:
@@ -132,9 +132,9 @@ async def delete_file(
 
 @router.post("/rename")
 async def rename_file(
-    request: RenameRequest,
+    request: schemas.RenameRequest,
     vault: VaultService = Depends(get_vault_service),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Rename or move a file"""
     try:
@@ -172,7 +172,7 @@ class CopyRequest(BaseModel):
 async def copy_file(
     request: CopyRequest,
     vault: VaultService = Depends(get_vault_service),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Copy a file"""
     try:
@@ -198,7 +198,7 @@ async def copy_file(
             detail=str(e)
         )
 
-@router.get("/{path:path}/backlinks", response_model=List[BacklinkInfo])
+@router.get("/{path:path}/backlinks", response_model=List[schemas.BacklinkInfo])
 async def get_backlinks(
     path: str,
     vault: VaultService = Depends(get_vault_service)

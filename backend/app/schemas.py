@@ -31,6 +31,36 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+class NoteContent(BaseModel):
+    path: str
+    content: str
+
+class NoteResponse(BaseModel):
+    path: str
+    content: str
+    modified: float
+    size: int
+
+class FileInfo(BaseModel):
+    path: str
+    name: str
+    type: str
+    mtime: float
+    size: int
+
+    class Config:
+        from_attributes = True
+
+class BacklinkInfo(BaseModel):
+    path: str
+    title: str
+    context: str
+    line: int
+
+class RenameRequest(BaseModel):
+    old_path: str
+    new_path: str
+
 class BookmarkBase(BaseModel):
     path: str
     title: str
