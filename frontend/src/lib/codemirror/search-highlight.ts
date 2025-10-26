@@ -9,113 +9,76 @@ import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@
 import { search, getSearchQuery, SearchQuery, setSearchQuery } from '@codemirror/search';
 
 // ============================================================================
-// STATE EFFECTS
+// STATE: For tracking the CURRENT match index
 // ============================================================================
+
 export const setCurrentMatch = StateEffect.define<number>();
 
-
-// ============================================================================
-// STATE FIELD
-// ============================================================================
-
-interface SearchState {
-  matches: { from: number; to: number }[];
-  currentMatchIndex: number;
-}
-
-const searchStateField = StateField.define<SearchState>({
+const searchStateField = StateField.define<{ currentMatchIndex: number }>({
   create() {
-    return {
-      matches: [],
-      currentMatchIndex: -1,
-    };
+    return { currentMatchIndex: -1 };
   },
-
   update(state, tr) {
+    const query = getSearchQuery(tr.state);
     const oldQuery = getSearchQuery(tr.startState);
-    const newQuery = getSearchQuery(tr.state);
-    const queryChanged = oldQuery.source !== newQuery.source || oldQuery.caseSensitive !== newQuery.caseSensitive;
 
-    let newState = state;
-
-    if (tr.docChanged || queryChanged) {
-      const matches: { from: number; to: number }[] = [];
-      if (newQuery.source && newQuery.source.length >= 2) {
-        const cursor = newQuery.getCursor(tr.state.doc);
-        while (cursor.next()) {
-            if (cursor.value.from !== cursor.value.to) {
-                matches.push({ from: cursor.value.from, to: cursor.value.to });
-            }
-        }
-      }
-      newState = { matches, currentMatchIndex: matches.length > 0 ? 0 : -1 };
+    // Reset index if the query changes or is cleared
+    if (query.source !== oldQuery.source) {
+      return { currentMatchIndex: query.source ? 0 : -1 };
     }
 
     for (const effect of tr.effects) {
-       if (effect.is(setCurrentMatch)) {
-        const index = effect.value;
-        if (index >= 0 && index < newState.matches.length) {
-          newState = { ...newState, currentMatchIndex: index };
-        }
+      if (effect.is(setCurrentMatch)) {
+        return { currentMatchIndex: effect.value };
       }
     }
-    
-    return newState;
+
+    return state;
   },
 });
 
-
 // ============================================================================
-// DECORATIONS
+// PLUGIN: To highlight ONLY the CURRENT match
 // ============================================================================
 
-const searchMatchDecoration = Decoration.mark({
-  class: 'cm-search-match',
-});
-
-const currentSearchMatchDecoration = Decoration.mark({
-  class: 'cm-search-match-current',
-});
-
-function getSearchDecorations(state: SearchState, query: SearchQuery): DecorationSet {
-  if (!query.source || state.matches.length === 0) {
-    return Decoration.none;
-  }
-
-  const decorations = state.matches.map((match, index) => {
-    const decoration =
-      index === state.currentMatchIndex
-        ? currentSearchMatchDecoration
-        : searchMatchDecoration;
-    return decoration.range(match.from, match.to);
-  });
-
-  return Decoration.set(decorations);
-}
-
-const searchDecorationsPlugin = ViewPlugin.fromClass(
+const currentMatchHighlighter = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
 
     constructor(view: EditorView) {
-      const state = view.state.field(searchStateField);
-      const query = getSearchQuery(view.state);
-      this.decorations = getSearchDecorations(state, query);
+      this.decorations = this.getDecorations(view);
     }
 
     update(update: ViewUpdate) {
-        const state = update.state.field(searchStateField);
-        const query = getSearchQuery(update.state);
-        const oldState = update.startState.field(searchStateField);
-        const oldQuery = getSearchQuery(update.startState);
-        
-        if (state !== oldState || query !== oldQuery) {
-            this.decorations = getSearchDecorations(state, query);
-        }
+      const queryChanged = getSearchQuery(update.startState).source !== getSearchQuery(update.state).source;
+      const currentIndexChanged = update.startState.field(searchStateField).currentMatchIndex !== update.state.field(searchStateField).currentMatchIndex;
+
+      if (update.docChanged || queryChanged || currentIndexChanged) {
+        this.decorations = this.getDecorations(update.view);
+      }
+    }
+
+    getDecorations(view: EditorView): DecorationSet {
+      const { currentMatchIndex } = view.state.field(searchStateField);
+      if (currentMatchIndex < 0) return Decoration.none;
+
+      const query = getSearchQuery(view.state);
+      if (!query.source) return Decoration.none;
+
+      const matches = [];
+      const cursor = query.getCursor(view.state.doc);
+      for (let i = 0; !cursor.done && i <= currentMatchIndex; i++) {
+          cursor.next();
+          if (i === currentMatchIndex && !cursor.done) {
+            matches.push(Decoration.mark({ class: 'cm-searchMatch-current' }).range(cursor.value.from, cursor.value.to));
+          }
+      }
+
+      return Decoration.set(matches);
     }
   },
   {
-    decorations: (v) => v.decorations,
+    decorations: v => v.decorations,
   }
 );
 
@@ -125,100 +88,108 @@ const searchDecorationsPlugin = ViewPlugin.fromClass(
 // ============================================================================
 
 export const searchHighlightTheme = EditorView.baseTheme({
-  '.cm-search-match': {
-    backgroundColor: '#ffd54f',
-    borderRadius: '2px',
+  // Default match style from @codemirror/search
+  '.cm-searchMatch': {
+    backgroundColor: '#ffd54f80', // yellow with some transparency
   },
-  '.cm-search-match-current': {
-    backgroundColor: '#ff9800',
-    borderRadius: '2px',
+  // Style for the currently selected match via our plugin
+  '.cm-searchMatch-current': {
+    backgroundColor: '#ff9800', // more prominent orange
     fontWeight: 'bold',
   },
 });
 
+
 // ============================================================================
 // PUBLIC API
 // ============================================================================
-
 export interface SearchAPI {
-  /** Set search query and highlight all matches */
   setQuery: (query: string) => void;
-  /** Navigate to next match */
   nextMatch: () => void;
-  /** Navigate to previous match */
   prevMatch: () => void;
-  /** Clear search */
   clearSearch: () => void;
-  /** Get current state */
-  getState: () => SearchState & { query: string };
+  getState: () => { query: string; matches: number; currentMatchIndex: number };
 }
+
 
 export function createSearchAPI(view: EditorView): SearchAPI {
-  return {
-    setQuery(query: string) {
-       view.dispatch({
-        effects: setSearchQuery.of(new SearchQuery({ search: query, caseSensitive: false }))
-      });
-
-      // Scroll to first match
-      setTimeout(() => {
-        const state = view.state.field(searchStateField);
-        if (state.matches.length > 0) {
-          const firstMatch = state.matches[0];
-          view.dispatch({
-            effects: EditorView.scrollIntoView(firstMatch.from, { y: 'center' }),
-            selection: { anchor: firstMatch.from, head: firstMatch.to },
-          });
+    const getMatches = () => {
+        const query = getSearchQuery(view.state);
+        const matches = [];
+        if (query.source) {
+            const cursor = query.getCursor(view.state.doc);
+            while (cursor.next()) {
+                if(cursor.value.from !== cursor.value.to) {
+                    matches.push({ from: cursor.value.from, to: cursor.value.to });
+                }
+            }
         }
-      }, 0);
-    },
+        return matches;
+    };
 
-    nextMatch() {
-      const state = view.state.field(searchStateField);
-      if (state.matches.length === 0) return;
+    return {
+        setQuery(query: string) {
+            view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: query, caseSensitive: false })) });
+            
+            setTimeout(() => {
+                const matches = getMatches();
+                if (matches.length > 0) {
+                    view.dispatch({
+                        effects: EditorView.scrollIntoView(matches[0].from, { y: 'center' }),
+                        selection: { anchor: matches[0].from, head: matches[0].to },
+                    });
+                }
+            }, 0);
+        },
 
-      const nextIndex = (state.currentMatchIndex + 1) % state.matches.length;
-      const match = state.matches[nextIndex];
+        nextMatch() {
+            const matches = getMatches();
+            if (matches.length === 0) return;
+            const { currentMatchIndex } = view.state.field(searchStateField);
+            const nextIndex = (currentMatchIndex + 1) % matches.length;
+            const match = matches[nextIndex];
 
-      view.dispatch({
-        effects: [
-          setCurrentMatch.of(nextIndex),
-          EditorView.scrollIntoView(match.from, { y: 'center' }),
-        ],
-        selection: { anchor: match.from, head: match.to },
-      });
-    },
+            view.dispatch({
+                effects: [
+                    setCurrentMatch.of(nextIndex),
+                    EditorView.scrollIntoView(match.from, { y: 'center' }),
+                ],
+                selection: { anchor: match.from, head: match.to },
+            });
+        },
 
-    prevMatch() {
-      const state = view.state.field(searchStateField);
-      if (state.matches.length === 0) return;
+        prevMatch() {
+            const matches = getMatches();
+            if (matches.length === 0) return;
+            const { currentMatchIndex } = view.state.field(searchStateField);
+            const prevIndex = (currentMatchIndex - 1 + matches.length) % matches.length;
+            const match = matches[prevIndex];
 
-      const prevIndex = (state.currentMatchIndex - 1 + state.matches.length) % state.matches.length;
-      const match = state.matches[prevIndex];
+            view.dispatch({
+                effects: [
+                    setCurrentMatch.of(prevIndex),
+                    EditorView.scrollIntoView(match.from, { y: 'center' }),
+                ],
+                selection: { anchor: match.from, head: match.to },
+            });
+        },
 
-      view.dispatch({
-        effects: [
-          setCurrentMatch.of(prevIndex),
-          EditorView.scrollIntoView(match.from, { y: 'center' }),
-        ],
-        selection: { anchor: match.from, head: match.to },
-      });
-    },
+        clearSearch() {
+            view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: '' })) });
+        },
 
-    clearSearch() {
-        view.dispatch({
-            effects: setSearchQuery.of(new SearchQuery({ search: '' }))
-        });
-    },
-
-    getState() {
-      return {
-        ...view.state.field(searchStateField),
-        query: getSearchQuery(view.state).source
-      };
-    },
-  };
+        getState() {
+            const matches = getMatches();
+            const state = view.state.field(searchStateField);
+            return {
+                query: getSearchQuery(view.state).source,
+                matches: matches.length,
+                currentMatchIndex: state.currentMatchIndex,
+            };
+        },
+    };
 }
+
 
 // ============================================================================
 // EXTENSION
@@ -226,12 +197,10 @@ export function createSearchAPI(view: EditorView): SearchAPI {
 
 export function searchHighlight(): Extension {
   return [
+    search({ top: true }),
     searchStateField,
-    searchDecorationsPlugin,
+    currentMatchHighlighter,
     searchHighlightTheme,
-    search({
-        top: true,
-    })
   ];
 }
 
