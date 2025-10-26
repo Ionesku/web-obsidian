@@ -14,6 +14,7 @@ import {
   findNext,
   findPrevious,
   searchKeymap,
+  openSearchPanel,
 } from '@codemirror/search';
 import { keymap } from '@codemirror/view';
 
@@ -91,7 +92,14 @@ export function searchHighlight(): Extension {
   return [
     search({ top: true }),
     searchHighlightTheme,
-    keymap.of(searchKeymap),
+    keymap.of([
+      ...searchKeymap,
+      // Add a specific binding for Ctrl-F to ensure it focuses the search panel
+      {
+        key: 'Ctrl-f',
+        run: openSearchPanel,
+      },
+    ]),
   ];
 }
 
