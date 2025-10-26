@@ -9,10 +9,8 @@ import {
   ViewPlugin,
   ViewUpdate,
   WidgetType,
-  RangeSetBuilder,
-  StateField,
-  StateEffect,
 } from '@codemirror/view';
+import { RangeSetBuilder, StateField, StateEffect } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { notesDB } from '../db';
 
