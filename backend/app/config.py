@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     WHOOSH_INDEX_DIR: str = "data/whoosh"
     
     # Search settings
-    INDEX_ON_STARTUP: bool = True  # Auto-index files on startup if index is empty
+    INDEX_ON_STARTUP: bool = False  # Auto-index files on startup if index is empty
+    ENABLE_TRIGRAMS: bool = False # Enable trigram indexing for substring search (increases index size)
     
     # CORS - stored as string, parsed to list
     _cors_origins: str = "http://0.0.0.0:5173,http://0.0.0.0:3000,http://0.0.0.0:80,http://localhost:5173,http://localhost:3000,http://localhost:80,http://localhost:8000,http://127.0.0.1:5173,http://127.0.0.1:3000,http://127.0.0.1:80,http://192.168.1.23:5173,http://192.168.1.23:3000,http://192.168.1.23:80,http://192.168.1.23"

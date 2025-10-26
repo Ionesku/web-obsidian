@@ -4,8 +4,10 @@ import json
 import aiofiles
 from datetime import datetime
 import re
+from fastapi import HTTPException
 
 from app.config import settings
+from app.utils.paths import safe_join
 
 
 class VaultService:
@@ -252,51 +254,43 @@ Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}
     
     def _validate_path(self, path: str) -> Path:
         """Validate path and protect against path traversal"""
-        # Normalize path separators
-        path = path.replace('\\', '/')
-        
-        # Remove leading slashes
-        path = path.lstrip('/')
-        
-        # Resolve full path
-        full_path = (self.vault_path / path).resolve()
-        
-        # Check path is within vault
         try:
-            full_path.relative_to(self.vault_path.resolve())
-        except ValueError:
-            raise ValueError("Invalid path - access denied")
-        
+            full_path = safe_join(self.vault_path, path)
+        except HTTPException as e:
+            # Convert HTTPException from safe_join to ValueError for the service layer
+            raise ValueError(e.detail)
+
         # Check file extension
         allowed_extensions = ('.md', '.canvas', '.json')
-        if not any(str(full_path).endswith(ext) for ext in allowed_extensions):
+        if full_path.suffix.lower() not in allowed_extensions:
             raise ValueError(f"Only {', '.join(allowed_extensions)} files are allowed")
         
         # Prevent access to hidden files
-        if any(part.startswith('.') for part in full_path.parts):
+        if any(part.startswith('.') for part in full_path.relative_to(self.vault_path.resolve()).parts):
             raise ValueError("Access to hidden files is denied")
         
         return full_path
     
     async def save_attachment(self, filename: str, content: bytes) -> Dict:
         """Save an attachment file"""
-        # Validate filename
-        if '/' in filename or '\\' in filename or filename.startswith('.'):
-            raise ValueError("Invalid filename")
-        
+        # Validate filename using safe_join
+        try:
+            attachments_dir = self.vault_path / 'attachments'
+            attachments_dir.mkdir(exist_ok=True)
+            file_path = safe_join(attachments_dir, filename)
+        except HTTPException as e:
+            raise ValueError(e.detail)
+
         # Check file size
         if len(content) > settings.MAX_ATTACHMENT_SIZE:
             raise ValueError(f"File too large. Max size is {settings.MAX_ATTACHMENT_SIZE} bytes")
-        
-        file_path = self.vault_path / 'attachments' / filename
-        file_path.parent.mkdir(parents=True, exist_ok=True)
         
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(content)
         
         return {
             'path': f'attachments/{filename}',
-            'url': f'/api/files/attachments/{filename}',
+            'url': f'/files/attachments/{filename}', # API endpoint, not fs path
             'size': len(content)
         }
 

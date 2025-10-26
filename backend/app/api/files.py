@@ -8,6 +8,7 @@ from app.models import User, NoteContent, NoteResponse, FileInfo, BacklinkInfo, 
 from app.vault_service import VaultService
 from app.search import get_indexer
 from app.search.markdown_parser import extract_metadata_for_index
+from app.utils.paths import safe_join
 
 router = APIRouter()
 
@@ -221,9 +222,13 @@ async def get_attachment(
     vault: VaultService = Depends(get_vault_service)
 ):
     """Serve an attachment file"""
-    file_path = vault.vault_path / 'attachments' / filename
-    
-    if not file_path.exists():
+    try:
+        attachments_dir = vault.vault_path / 'attachments'
+        file_path = safe_join(attachments_dir, filename)
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+
+    if not file_path.exists() or not file_path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Attachment not found"

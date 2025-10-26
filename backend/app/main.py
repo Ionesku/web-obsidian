@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import uvicorn
 import logging
+from filelock import FileLock, Timeout
 
 from app.config import settings
 from app.database import init_db
@@ -35,27 +36,41 @@ async def lifespan(app: FastAPI):
     stats = indexer.get_stats()
     logger.info(f"🔍 Search index loaded: {stats.get('doc_count', 0)} documents")
     
-    # Auto-index on startup if index is empty or index_on_startup is enabled
-    if stats.get('doc_count', 0) == 0 or getattr(settings, 'INDEX_ON_STARTUP', False):
-        logger.info("📚 Starting background indexing...")
-        import asyncio
-        asyncio.create_task(auto_index_all_files())
+    # Auto-index only when explicitly enabled (and under lock)
+    if getattr(settings, 'INDEX_ON_STARTUP', False):
+        lock = FileLock("data/whoosh/.index.lock", timeout=0)
+        try:
+            with lock:
+                logger.info("📚 Starting background indexing (exclusive)...")
+                import asyncio
+                app.state.index_task = asyncio.create_task(auto_index_all_files())
+        except Timeout:
+            logger.info("Another worker already indexing; skip")
     
     yield
     
     # Shutdown
     logger.info("👋 Shutting down Obsidian Web API...")
+    # cancel background indexing if running
+    task = getattr(app.state, "index_task", None)
+    if task and not task.done():
+        task.cancel()
 
 
 async def auto_index_all_files():
     """Background task to index all files on startup"""
+    import time
     from pathlib import Path
     from app.vault_service import VaultService
     from app.search.indexer import get_indexer
     from app.search.markdown_parser import extract_metadata_for_index
-    from whoosh.query import Term
-    from datetime import datetime
+    from datetime import datetime, timezone
     
+    start_time = time.time()
+    total_indexed = 0
+    total_skipped = 0
+    total_errors = 0
+
     try:
         indexer = get_indexer()
         vaults_root = Path(settings.VAULTS_ROOT)
@@ -63,9 +78,6 @@ async def auto_index_all_files():
         if not vaults_root.exists():
             logger.warning(f"Vaults directory not found: {vaults_root}")
             return
-        
-        total_indexed = 0
-        total_skipped = 0
         
         # Get indexed documents with their mtimes
         indexed_docs = {}
@@ -95,12 +107,21 @@ async def auto_index_all_files():
                     try:
                         # Check if file needs reindexing (modified or new)
                         file_data = await vault.read_file(file_info.path)
-                        file_mtime = datetime.fromisoformat(file_data.get('modified', '1970-01-01'))
+                        
+                        modified_str = file_data.get('modified', '1970-01-01T00:00:00Z')
+                        try:
+                            file_mtime = datetime.fromisoformat(modified_str.replace('Z', '+00:00')).astimezone(timezone.utc)
+                        except ValueError:
+                            file_mtime = datetime.fromisoformat(modified_str).astimezone(timezone.utc)
                         
                         indexed_mtime = indexed_docs.get(file_info.path)
                         
                         # Skip if already indexed and not modified
                         if indexed_mtime and isinstance(indexed_mtime, datetime):
+                            # Ensure indexed_mtime is timezone-aware for comparison
+                            if indexed_mtime.tzinfo is None:
+                                indexed_mtime = indexed_mtime.replace(tzinfo=timezone.utc)
+
                             if file_mtime <= indexed_mtime:
                                 total_skipped += 1
                                 continue
@@ -122,11 +143,32 @@ async def auto_index_all_files():
                         
                     except Exception as e:
                         logger.error(f"Error indexing {file_info.path}: {e}")
+                        total_errors += 1
                         
             except Exception as e:
                 logger.error(f"Error processing user {user_id}: {e}")
+                total_errors += 1
         
-        logger.info(f"✅ Background indexing complete! Indexed: {total_indexed}, Skipped: {total_skipped}")
+        end_time = time.time()
+        duration = end_time - start_time
+        docs_per_sec = total_indexed / duration if duration > 0 else 0
+        
+        # Optimize index after bulk update
+        if total_indexed > 0:
+            indexer.optimize()
+        
+        stats = indexer.get_detailed_stats()
+        
+        logger.info(
+            f"✅ Background indexing complete! "
+            f"Duration: {duration:.2f}s, "
+            f"Indexed: {total_indexed}, "
+            f"Skipped: {total_skipped}, "
+            f"Errors: {total_errors}, "
+            f"Docs/sec: {docs_per_sec:.2f}, "
+            f"Index size: {stats.get('index_size_mb', 0):.2f}MB, "
+            f"Segments: {stats.get('segments', 'N/A')}"
+        )
         
     except Exception as e:
         logger.error(f"Auto-indexing failed: {e}", exc_info=True)

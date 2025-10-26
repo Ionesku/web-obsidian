@@ -7,6 +7,7 @@ from typing import Dict, List, Any, Optional
 from whoosh import index
 from whoosh.writing import AsyncWriter
 import hashlib
+import os
 
 from .whoosh_schema import get_index
 from ..config import settings
@@ -191,6 +192,27 @@ class MarkdownIndexer:
             logger.error(f"Failed to get stats: {e}")
             return {"error": str(e)}
     
+    def get_detailed_stats(self) -> Dict[str, Any]:
+        """Get more detailed index statistics including size and segments."""
+        stats = self.get_stats()
+        try:
+            # Calculate index size
+            total_size = 0
+            for dirpath, _, filenames in os.walk(self.index_dir):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if not os.path.islink(fp):
+                        total_size += os.path.getsize(fp)
+            stats['index_size_mb'] = total_size / (1024 * 1024)
+            
+            # Get number of segments
+            stats['segments'] = len(self.ix._segments())
+        except Exception as e:
+            logger.error(f"Failed to get detailed stats: {e}")
+            stats['detailed_error'] = str(e)
+            
+        return stats
+
     def optimize(self) -> bool:
         """
         Optimize index (merge segments)

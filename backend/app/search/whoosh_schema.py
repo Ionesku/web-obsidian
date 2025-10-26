@@ -34,16 +34,20 @@ def get_schema() -> Schema:
     - mtime: Modification time
     - size: File size in bytes
     """
-    return Schema(
-        path=ID(stored=True, unique=True),
-        name=TEXT(analyzer=StandardAnalyzer(), stored=True, field_boost=2.0),
-        tags=KEYWORD(lowercase=True, commas=True, scorable=True, stored=True),
-        props=KEYWORD(lowercase=True, commas=True, stored=True),
-        content=TEXT(analyzer=StemmingAnalyzer(), phrase=True, stored=False),
-        tri=NGRAM(minsize=3, maxsize=3, stored=False),  # For regex prefiltering
-        mtime=DATETIME(stored=True),
-        size=NUMERIC(stored=True),
-    )
+    schema_fields = {
+        "path": ID(stored=True, unique=True),
+        "name": TEXT(analyzer=StandardAnalyzer(), stored=True, field_boost=2.0),
+        "tags": KEYWORD(lowercase=True, commas=True, scorable=True, stored=True),
+        "props": KEYWORD(lowercase=True, commas=True, stored=True),
+        "content": TEXT(analyzer=StemmingAnalyzer(), phrase=True, stored=False),
+        "mtime": DATETIME(stored=True),
+        "size": NUMERIC(stored=True),
+    }
+
+    if settings.ENABLE_TRIGRAMS:
+        schema_fields["tri"] = NGRAM(minsize=3, maxsize=3, stored=False)
+
+    return Schema(**schema_fields)
 
 
 def ensure_index(index_dir: str) -> index.Index:

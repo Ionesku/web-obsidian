@@ -4,7 +4,7 @@
  * Provides search functionality with highlighting and navigation
  */
 
-import { Extension, StateField, StateEffect, RangeSet } from '@codemirror/state';
+import { Extension, StateField, StateEffect } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { SearchCursor } from '@codemirror/search';
 
@@ -25,6 +25,14 @@ interface SearchState {
   currentMatchIndex: number;
 }
 
+function buildCursor(doc: any, query: string) {
+  if (!query) return null;
+  // Экранируем спецсимволы и собираем регистронезависимый regex
+  const safe = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rx = new RegExp(safe, 'gi');
+  return new SearchCursor(doc, rx, 0);
+}
+
 const searchStateField = StateField.define<SearchState>({
   create() {
     return {
@@ -39,28 +47,20 @@ const searchStateField = StateField.define<SearchState>({
 
     for (const effect of tr.effects) {
       if (effect.is(setSearchQuery)) {
-        const query = effect.value;
-        if (query === '') {
+        const query = effect.value.trim();
+        if (query.length < 2) {
           newState = { query: '', matches: [], currentMatchIndex: -1 };
         } else {
-          // Find all matches
-          const matches: { from: number; to: number }[] = [];
-          const cursor = new SearchCursor(tr.state.doc, query, 0, undefined, (x) =>
-            x.toLowerCase()
-          );
-
-          while (!cursor.done) {
-            cursor.next();
-            if (!cursor.done) {
-              matches.push({ from: cursor.value.from, to: cursor.value.to });
+            const cur = buildCursor(tr.state.doc, query);
+            const matches: {from:number; to:number}[] = [];
+            if (cur) {
+                while (cur.next()) {
+                    if (cur.value.from !== cur.value.to) { // ensure match is not empty
+                        matches.push({ from: cur.value.from, to: cur.value.to });
+                    }
+                }
             }
-          }
-
-          newState = {
-            query,
-            matches,
-            currentMatchIndex: matches.length > 0 ? 0 : -1,
-          };
+            newState = { query, matches, currentMatchIndex: matches.length ? 0 : -1 };
         }
       } else if (effect.is(setCurrentMatch)) {
         const index = effect.value;
