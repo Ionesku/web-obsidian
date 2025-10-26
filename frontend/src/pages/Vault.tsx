@@ -156,7 +156,7 @@ export function VaultPage() {
   // Focus local search input
   useEffect(() => {
     if (showLocalSearch) {
-      localSearchInputRef.current?.focus();
+      setTimeout(() => localSearchInputRef.current?.focus(), 50);
     }
   }, [showLocalSearch]);
 
