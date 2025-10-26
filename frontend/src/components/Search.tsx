@@ -50,14 +50,11 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
       setResult(searchResult);
       
       // Add to history
-      setHistory((prevHistory) => {
-        if (!prevHistory.includes(q)) {
-          const newHistory = [q, ...prevHistory.slice(0, 19)]; // Keep last 20
-          localStorage.setItem('search_history', JSON.stringify(newHistory));
-          return newHistory;
-        }
-        return prevHistory;
-      });
+      if (!history.includes(q)) {
+        const newHistory = [q, ...history.slice(0, 19)]; // Keep last 20
+        setHistory(newHistory);
+        localStorage.setItem('search_history', JSON.stringify(newHistory));
+      }
     } catch (error) {
       console.error('Search failed:', error);
       setResult({
@@ -69,15 +66,14 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [history]);
 
-  // Auto-search if initial query is provided
+  // Perform initial search if query is provided
   useEffect(() => {
-    if (initialQuery && initialQuery !== query) {
-      setQuery(initialQuery);
+    if (initialQuery && initialQuery.trim()) {
       performSearch(initialQuery);
     }
-  }, [initialQuery, query, performSearch]);
+  }, [initialQuery, performSearch]);
 
   // Handle query change with debounce
   const handleQueryChange = (value: string) => {

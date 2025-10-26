@@ -49,7 +49,7 @@ export function VaultPage() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { files, currentNote, loadFiles, loadNote, saveNote, createNote, isLoading } = useVaultStore();
-  const { results, search, searchByTag, clearSearch } = useSearchStore();
+  const { results, search, searchByTag, clearSearch, setQuery, query: searchQuery } = useSearchStore();
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -57,7 +57,6 @@ export function VaultPage() {
   const [showLocalSearch, setShowLocalSearch] = useState(false); // For Ctrl+F overlay
   const [showSearchSidebar, setShowSearchSidebar] = useState(false); // For dedicated search sidebar
   const [showFilesSidebar, setShowFilesSidebar] = useState(true); // For files sidebar
-  const [searchQuery, setSearchQuery] = useState(''); // Query for search sidebar
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showNewNoteDialog, setShowNewNoteDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
@@ -97,11 +96,12 @@ export function VaultPage() {
       // Ctrl+F for local search
       if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
         e.preventDefault();
+        e.stopPropagation();
         setShowLocalSearch(true);
         // Focus input after state updates
         setTimeout(() => {
           localSearchInputRef.current?.focus();
-        }, 0);
+        }, 100);
       }
       
       // Escape to close search overlays
@@ -116,8 +116,9 @@ export function VaultPage() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase to intercept before browser default
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [showLocalSearch, showQuickSwitcher]);
 
   useEffect(() => {
@@ -453,10 +454,13 @@ export function VaultPage() {
   };
 
   const handleTagClick = (tag: string) => {
+    console.log('Tag clicked:', tag);
     // Remove # if present
     const cleanTag = tag.replace(/^#/, '');
-    // Set search query and open search sidebar
-    setSearchQuery(cleanTag);
+    // Use the tag directly as search query
+    const searchQuery = `tag:${cleanTag}`;
+    console.log('Search query:', searchQuery);
+    setQuery(searchQuery);
     setShowSearchSidebar(true); // Open search sidebar
     setShowFilesSidebar(false); // Hide files sidebar
   };
@@ -634,7 +638,10 @@ export function VaultPage() {
           >
             {showSearchSidebar ? (
               /* Search Sidebar */
-              <Search onResultClick={handleSelectNote} initialQuery={searchQuery} />
+              <Search 
+                onResultClick={handleSelectNote} 
+                initialQuery={searchQuery}
+              />
             ) : (
               /* Files Sidebar */
               <>
