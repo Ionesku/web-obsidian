@@ -528,7 +528,7 @@ export function VaultPage() {
   return (
     <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
       {/* Left icon panel - Dark sidebar */}
-      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 relative z-10">
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-4 gap-4 relative z-0">
         <button
           onClick={() => {
             setShowFilesSidebar(s => !s);
@@ -629,7 +629,7 @@ export function VaultPage() {
         {!sidebarCollapsed && (showFilesSidebar || showSearchSidebar) && (
           <aside 
             ref={sidebarRef}
-            className="bg-slate-50 border-r flex flex-col relative shadow-lg z-20"
+            className="absolute left-0 top-0 bottom-0 bg-slate-50 border-r flex flex-col shadow-lg z-20 transition-all duration-200"
             style={{ width: `${sidebarWidth}px` }}
           >
             <div className="p-2 border-b flex items-center gap-1 bg-slate-100">
@@ -792,7 +792,7 @@ export function VaultPage() {
         {sidebarCollapsed && (
           <button
             onClick={() => setSidebarCollapsed(false)}
-            className="w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-20"
+            className="absolute left-0 top-0 bottom-0 w-8 bg-white border-r hover:bg-slate-50 flex items-center justify-center shadow-lg z-20"
             title="Expand sidebar"
           >
             <PanelLeft className="w-4 h-4" />
@@ -800,7 +800,7 @@ export function VaultPage() {
         )}
 
         {/* Main content */}
-        <main className="flex-1 flex flex-col overflow-hidden relative">
+        <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-200" style={{ marginLeft: !sidebarCollapsed && (showFilesSidebar || showSearchSidebar) ? `${sidebarWidth}px` : '0' }}>
           {/* Local search overlay (Ctrl+F) */}
           {showLocalSearch && (
             <div className="absolute top-4 right-4 z-50 bg-white border rounded-lg shadow-xl p-4 min-w-[400px]">
