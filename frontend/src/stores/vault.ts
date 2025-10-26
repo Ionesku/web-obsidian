@@ -48,6 +48,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       console.log(`Starting background indexing of ${files.length} files...`);
       setTimeout(async () => {
         for (const file of files) {
+          if (file.type !== 'file') continue; // Only index files, skip folders
           try {
             const note = await api.getFile(file.path);
             await searchEngine.indexLocal({
