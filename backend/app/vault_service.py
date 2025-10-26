@@ -130,28 +130,30 @@ Happy note-taking! 📝
             return []
         
         files = []
-        for path in base.rglob('*.md'):
+        # Find all files and folders
+        for path in base.rglob('*'):
+            # Skip dot files/folders
+            if any(part.startswith('.') for part in path.parts):
+                continue
+                
             relative = path.relative_to(self.vault_path)
             stats = path.stat()
             
-            # Extract title from first heading
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    first_line = f.readline().strip()
-                    title = first_line.replace('#', '').strip() if first_line.startswith('#') else path.stem
-            except:
-                title = path.stem
+            file_type = 'folder' if path.is_dir() else 'file'
             
+            # Skip empty folders
+            if file_type == 'folder' and not any(path.iterdir()):
+                continue
+
             files.append({
                 'path': str(relative).replace('\\', '/'),
                 'name': path.name,
-                'title': title,
-                'folder': str(relative.parent).replace('\\', '/') if str(relative.parent) != '.' else '',
-                'modified': datetime.fromtimestamp(stats.st_mtime).isoformat(),
+                'type': file_type,
+                'mtime': stats.st_mtime,
                 'size': stats.st_size
             })
         
-        return sorted(files, key=lambda x: x['modified'], reverse=True)
+        return sorted(files, key=lambda x: x['mtime'], reverse=True)
     
     async def get_backlinks(self, note_path: str) -> List[Dict]:
         """Find backlinks to a note"""

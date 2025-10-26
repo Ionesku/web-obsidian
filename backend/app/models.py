@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 
 Base = declarative_base()
@@ -61,9 +61,8 @@ class NoteResponse(BaseModel):
 class FileInfo(BaseModel):
     path: str
     name: str
-    title: str
-    folder: str
-    modified: str
+    type: str  # 'file' or 'folder'
+    modified: float = Field(alias="mtime")
     size: int
 
 
