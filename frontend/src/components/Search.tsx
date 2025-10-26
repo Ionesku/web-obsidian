@@ -43,10 +43,12 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
       return;
     }
 
+    console.log('Performing search for:', q);
     setIsSearching(true);
     
     try {
       const searchResult = await federatedSearch(q, { limit: 50 });
+      console.log('Search result:', searchResult);
       setResult(searchResult);
       
       // Add to history
@@ -68,12 +70,14 @@ export function Search({ onResultClick, initialQuery }: SearchProps) {
     }
   }, [history]);
 
-  // Perform initial search if query is provided
+  // Update query when initialQuery changes
   useEffect(() => {
-    if (initialQuery && initialQuery.trim()) {
+    if (initialQuery) {
+      console.log('Initial query changed to:', initialQuery);
+      setQuery(initialQuery);
       performSearch(initialQuery);
     }
-  }, [initialQuery, performSearch]);
+  }, [initialQuery]);
 
   // Handle query change with debounce
   const handleQueryChange = (value: string) => {

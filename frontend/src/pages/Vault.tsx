@@ -355,6 +355,7 @@ export function VaultPage() {
     // Count words and characters
     const words = content.trim().split(/\s+/).filter(Boolean).length;
     const chars = content.length;
+    console.log('Content changed:', { words, chars });
     setWordCount(words);
     setCharCount(chars);
   }, []);
@@ -483,121 +484,117 @@ export function VaultPage() {
   const currentNoteModified = files.find(f => f.path === selectedPath)?.modified;
 
   return (
-    <div className={`h-screen flex flex-col ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
-      {/* Top toolbar - horizontal */}
-      <div className="h-12 bg-slate-800 flex items-center px-2 gap-1">
-        {/* Left side - main actions */}
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {sidebarCollapsed ? <PanelRight className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-        </button>
+    <div className={`h-screen flex ${darkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
+      {/* Left icon panel - vertical */}
+      <aside className="w-12 bg-slate-800 flex flex-col items-center py-2 gap-1">
+        {/* Top actions in a group */}
+        <div className="flex flex-col items-center gap-1 pb-2 border-b border-slate-700 w-full">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelRight className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          </button>
+          
+          <button
+            onClick={() => {}}
+            className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Bookmarks"
+          >
+            <BookMarked className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={() => {
+              if (showSearchSidebar) {
+                setShowSearchSidebar(false);
+                setShowFilesSidebar(true);
+              } else {
+                setShowSearchSidebar(true);
+                setShowFilesSidebar(false);
+              }
+            }}
+            className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
+              showSearchSidebar
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title="Search (Find)"
+          >
+            <SearchIcon className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={() => {
+              if (showFilesSidebar) {
+                setShowFilesSidebar(false);
+                setShowSearchSidebar(true);
+              } else {
+                setShowFilesSidebar(true);
+                setShowSearchSidebar(false);
+              }
+            }}
+            className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
+              showFilesSidebar
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'hover:bg-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title="Files"
+          >
+            <FileText className="w-5 h-5" />
+          </button>
+        </div>
         
-        <button
-          onClick={() => {}}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-          title="Bookmarks"
-        >
-          <BookMarked className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={() => {
-            if (showSearchSidebar) {
-              // If search is already open, close it and open files
-              setShowSearchSidebar(false);
-              setShowFilesSidebar(true);
-            } else {
-              // Open search and close files
-              setShowSearchSidebar(true);
-              setShowFilesSidebar(false);
-            }
-          }}
-          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-            showSearchSidebar
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-          title="Search (Find)"
-        >
-          <SearchIcon className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={() => {
-            if (showFilesSidebar) {
-              // If files is already open, close it and open search
-              setShowFilesSidebar(false);
-              setShowSearchSidebar(true);
-            } else {
-              // Open files and close search
-              setShowFilesSidebar(true);
-              setShowSearchSidebar(false);
-            }
-          }}
-          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
-            showFilesSidebar
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'hover:bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-          title="Files"
-        >
-          <FileText className="w-4 h-4" />
-        </button>
-        
-        {/* Divider */}
-        <div className="h-6 w-px bg-slate-600 mx-1" />
-        
+        {/* Other actions */}
         <button
           onClick={handleDailyNote}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Daily Notes"
         >
-          <Calendar className="w-4 h-4" />
+          <Calendar className="w-5 h-5" />
         </button>
         <button
           onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Quick Switcher"
         >
-          <Command className="w-4 h-4" />
+          <Command className="w-5 h-5" />
         </button>
         <button
           onClick={() => navigate('/canvas')}
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
           title="Canvas"
         >
-          <Grid3x3 className="w-4 h-4" />
+          <Grid3x3 className="w-5 h-5" />
         </button>
         <button
           onClick={() => setVimMode(!vimMode)}
-          className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+          className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
             vimMode 
               ? 'bg-green-600 text-white hover:bg-green-700' 
               : 'hover:bg-slate-700 text-slate-300 hover:text-white'
           }`}
           title={vimMode ? "Vim Mode: ON" : "Vim Mode: OFF"}
         >
-          <span className="text-sm font-bold font-mono">V</span>
+          <span className="text-base font-bold font-mono">V</span>
         </button>
         
         {/* Spacer */}
         <div className="flex-1" />
         
-        {/* User menu at right */}
+        {/* User menu at bottom */}
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors text-xs"
+            className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold hover:bg-blue-600 transition-colors"
             title={user?.username}
           >
             {user?.username.charAt(0).toUpperCase()}
           </button>
           
           {showUserMenu && (
-            <div className="absolute right-0 top-12 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
+            <div className="absolute left-12 bottom-0 bg-white border rounded-lg shadow-lg py-2 w-48 z-20">
               <div className="px-4 py-2 border-b">
                 <div className="text-sm font-semibold">{user?.username}</div>
                 <div className="text-xs text-gray-500">{user?.email}</div>
@@ -622,7 +619,7 @@ export function VaultPage() {
             </div>
           )}
         </div>
-      </div>
+      </aside>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Files or Search */}
