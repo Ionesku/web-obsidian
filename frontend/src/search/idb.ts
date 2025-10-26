@@ -76,10 +76,11 @@ export class SearchDatabase extends Dexie {
         meta,
       });
 
-      // 4. Insert new tag indexes
+      // 4. Insert new tag indexes (deduplicate)
       if (meta.tags.length > 0) {
+        const uniqueTags = Array.from(new Set(meta.tags));
         await this.tagIndex.bulkAdd(
-          meta.tags.map(tag => ({
+          uniqueTags.map(tag => ({
             tag,
             path: file.path,
             id: `${tag}+${file.path}`,
@@ -103,15 +104,23 @@ export class SearchDatabase extends Dexie {
         await this.propIndex.bulkAdd(propRecords);
       }
 
-      // 6. Insert link indexes
+      // 6. Insert link indexes (deduplicate to avoid constraint errors)
       if (meta.links.length > 0) {
-        await this.linkIndex.bulkAdd(
-          meta.links.map(link => ({
-            srcPath: file.path,
-            dstPath: link.target,
-            id: `${link.target}+${file.path}`,
-          }))
-        );
+        const linkMap = new Map<string, { srcPath: string; dstPath: string; id: string }>();
+        for (const link of meta.links) {
+          const id = `${link.target}+${file.path}`;
+          if (!linkMap.has(id)) {
+            linkMap.set(id, {
+              srcPath: file.path,
+              dstPath: link.target,
+              id,
+            });
+          }
+        }
+        const uniqueLinks = Array.from(linkMap.values());
+        if (uniqueLinks.length > 0) {
+          await this.linkIndex.bulkAdd(uniqueLinks);
+        }
       }
 
       // 7. Insert block indexes

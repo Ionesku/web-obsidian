@@ -42,12 +42,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add custom middlewares (order matters!)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(ErrorHandlingMiddleware)
-app.add_middleware(LoggingMiddleware)
-
-# CORS middleware
+# CORS middleware - MUST be first to handle preflight requests!
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -55,6 +50,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add custom middlewares (order matters!)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(LoggingMiddleware)
 
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
