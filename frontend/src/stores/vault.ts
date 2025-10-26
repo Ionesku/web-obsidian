@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '@/lib/api';
+import { searchEngine } from '@/search/engine';
 
 interface FileInfo {
   path: string;
@@ -43,6 +44,25 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     try {
       const files = await api.listFiles();
       set({ files, isLoading: false });
+      
+      // Index all files for search in background (don't block UI)
+      console.log(`Starting background indexing of ${files.length} files...`);
+      setTimeout(async () => {
+        for (const file of files) {
+          try {
+            const note = await api.getFile(file.path);
+            await searchEngine.indexLocal({
+              path: file.path,
+              content: note.content,
+              mtime: note.modified,
+              hash: '', // Will be calculated by engine
+            });
+          } catch (err) {
+            console.error(`Failed to index ${file.path}:`, err);
+          }
+        }
+        console.log('✅ Indexing complete!');
+      }, 100); // Small delay to not block initial UI render
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -63,6 +83,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     try {
       await api.updateFile(path, content);
       
+      // Index the updated file for search
+      await searchEngine.indexLocal({
+        path,
+        content,
+        mtime: Date.now(),
+        hash: '', // Will be calculated by engine
+      });
+      
       // Don't reload files on autosave to avoid UI flicker and focus loss
       // The file list will be refreshed when user manually interacts with it
       // This dramatically improves autosave performance and UX
@@ -76,6 +104,15 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     set({ error: null });
     try {
       await api.createFile(path, content);
+      
+      // Index the new file for search
+      await searchEngine.indexLocal({
+        path,
+        content,
+        mtime: Date.now(),
+        hash: '', // Will be calculated by engine
+      });
+      
       await get().loadFiles();
     } catch (error: any) {
       set({ error: error.message });
@@ -87,6 +124,9 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     set({ error: null });
     try {
       await api.deleteFile(path);
+      
+      // Remove from search index
+      await searchEngine.deleteLocal(path);
       
       // Clear current note if it was deleted
       const { currentNote } = get();

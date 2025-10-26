@@ -343,12 +343,16 @@ export function MarkdownEditor({
         
         // Notify parent of state changes
         if (onSearchStateChange) {
-          const state = searchAPIRef.current.getState();
-          onSearchStateChange({
-            query: state.query,
-            matchCount: state.matches.length,
-            currentMatch: state.currentMatchIndex + 1,
-          });
+          setTimeout(() => {
+            if (searchAPIRef.current) {
+              const state = searchAPIRef.current.getState();
+              onSearchStateChange({
+                query: state.query,
+                matchCount: state.matches.length,
+                currentMatch: state.currentMatchIndex + 1,
+              });
+            }
+          }, 100); // Small delay to ensure state is updated
         }
       } else {
         searchAPIRef.current.clearSearch();
@@ -357,6 +361,44 @@ export function MarkdownEditor({
         }
       }
     }
+  }, [searchQuery, onSearchStateChange]);
+  
+  // Handle F3/Shift+F3 navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if we have an active search
+      if (!searchQuery || !searchAPIRef.current) return;
+      
+      // Navigate with F3 / Shift+F3
+      if (e.key === 'F3') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (e.shiftKey) {
+          searchAPIRef.current.prevMatch();
+        } else {
+          searchAPIRef.current.nextMatch();
+        }
+        
+        // Update state after navigation
+        if (onSearchStateChange) {
+          setTimeout(() => {
+            if (searchAPIRef.current) {
+              const state = searchAPIRef.current.getState();
+              onSearchStateChange({
+                query: state.query,
+                matchCount: state.matches.length,
+                currentMatch: state.currentMatchIndex + 1,
+              });
+            }
+          }, 10);
+        }
+      }
+    };
+    
+    // Add event listener to window to catch F3 everywhere
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [searchQuery, onSearchStateChange]);
 
   /**

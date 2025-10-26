@@ -818,8 +818,13 @@ export function VaultPage() {
                     <button
                       onClick={() => {
                         // Trigger Shift+F3 for previous match
-                        const event = new KeyboardEvent('keydown', { key: 'F3', shiftKey: true });
-                        document.dispatchEvent(event);
+                        const event = new KeyboardEvent('keydown', { 
+                          key: 'F3', 
+                          shiftKey: true,
+                          bubbles: true,
+                          cancelable: true
+                        });
+                        window.dispatchEvent(event);
                       }}
                       className="px-2 py-1 rounded hover:bg-slate-200"
                       title="Previous (Shift+F3)"
@@ -829,8 +834,12 @@ export function VaultPage() {
                     <button
                       onClick={() => {
                         // Trigger F3 for next match
-                        const event = new KeyboardEvent('keydown', { key: 'F3' });
-                        document.dispatchEvent(event);
+                        const event = new KeyboardEvent('keydown', { 
+                          key: 'F3',
+                          bubbles: true,
+                          cancelable: true
+                        });
+                        window.dispatchEvent(event);
                       }}
                       className="px-2 py-1 rounded hover:bg-slate-200"
                       title="Next (F3)"
