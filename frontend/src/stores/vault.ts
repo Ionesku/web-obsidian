@@ -2,12 +2,11 @@ import { create } from 'zustand';
 import api from '@/lib/api';
 import { searchEngine } from '@/search/engine';
 
-interface FileInfo {
+export interface FileInfo {
   path: string;
   name: string;
-  title: string;
-  folder: string;
-  modified: string;
+  type: 'file' | 'folder';
+  modified: number;
   size: number;
 }
 

@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Fuse from 'fuse.js';
-import { api } from '../lib/api';
-import { useVaultStore } from '../stores/vault'; // Import the vault store
+import { useVaultStore, type FileInfo } from '../stores/vault'; // Import FileInfo
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-
-// Define the shape of a file object
-interface VaultFile {
-  path: string;
-  name: string;
-  type: 'file' | 'folder';
-  mtime: number;
-}
 
 // Helpers for recent files
 const RECENT_FILES_KEY = 'recent_files';
@@ -46,7 +37,7 @@ interface QuickSwitcherProps {
 const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect }) => {
   const [query, setQuery] = useState('');
   const { files: allFiles } = useVaultStore(); // Get files from the store
-  const [results, setResults] = useState<VaultFile[]>([]);
+  const [results, setResults] = useState<FileInfo[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +61,7 @@ const QuickSwitcher: React.FC<QuickSwitcherProps> = ({ isOpen, onClose, onSelect
       const recentPaths = getRecentFiles();
       const recentFileObjects = recentPaths
         .map(path => files.find(f => f.path === path))
-        .filter((f): f is VaultFile => !!f);
+        .filter((f): f is FileInfo => !!f);
       setResults(recentFileObjects);
     } else {
       const searchResults = fuse.search(query).map(result => result.item);
