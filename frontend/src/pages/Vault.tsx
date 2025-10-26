@@ -49,7 +49,7 @@ export function VaultPage() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { files, currentNote, loadFiles, loadNote, saveNote, createNote, isLoading } = useVaultStore();
-  const { results, search, searchByTag, clearSearch, setQuery } = useSearchStore();
+  const { results, search, searchByTag, clearSearch } = useSearchStore();
   
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -57,6 +57,7 @@ export function VaultPage() {
   const [showLocalSearch, setShowLocalSearch] = useState(false); // For Ctrl+F overlay
   const [showSearchSidebar, setShowSearchSidebar] = useState(false); // For dedicated search sidebar
   const [showFilesSidebar, setShowFilesSidebar] = useState(true); // For files sidebar
+  const [searchQuery, setSearchQuery] = useState(''); // Query for search sidebar
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showNewNoteDialog, setShowNewNoteDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
@@ -454,10 +455,8 @@ export function VaultPage() {
   const handleTagClick = (tag: string) => {
     // Remove # if present
     const cleanTag = tag.replace(/^#/, '');
-    // Use the tag directly as search query
-    const searchQuery = cleanTag;
-    setQuery(searchQuery);
-    search(searchQuery);
+    // Set search query and open search sidebar
+    setSearchQuery(cleanTag);
     setShowSearchSidebar(true); // Open search sidebar
     setShowFilesSidebar(false); // Hide files sidebar
   };
@@ -635,7 +634,7 @@ export function VaultPage() {
           >
             {showSearchSidebar ? (
               /* Search Sidebar */
-              <Search onResultClick={handleSelectNote} />
+              <Search onResultClick={handleSelectNote} initialQuery={searchQuery} />
             ) : (
               /* Files Sidebar */
               <>

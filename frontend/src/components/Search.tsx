@@ -11,10 +11,11 @@ import { Card } from './ui/card';
 
 interface SearchProps {
   onResultClick?: (path: string) => void;
+  initialQuery?: string;
 }
 
-export function Search({ onResultClick }: SearchProps) {
-  const [query, setQuery] = useState('');
+export function Search({ onResultClick, initialQuery }: SearchProps) {
+  const [query, setQuery] = useState(initialQuery || '');
   const [result, setResult] = useState<SearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -49,11 +50,14 @@ export function Search({ onResultClick }: SearchProps) {
       setResult(searchResult);
       
       // Add to history
-      if (!history.includes(q)) {
-        const newHistory = [q, ...history.slice(0, 19)]; // Keep last 20
-        setHistory(newHistory);
-        localStorage.setItem('search_history', JSON.stringify(newHistory));
-      }
+      setHistory((prevHistory) => {
+        if (!prevHistory.includes(q)) {
+          const newHistory = [q, ...prevHistory.slice(0, 19)]; // Keep last 20
+          localStorage.setItem('search_history', JSON.stringify(newHistory));
+          return newHistory;
+        }
+        return prevHistory;
+      });
     } catch (error) {
       console.error('Search failed:', error);
       setResult({
@@ -65,7 +69,15 @@ export function Search({ onResultClick }: SearchProps) {
     } finally {
       setIsSearching(false);
     }
-  }, [history]);
+  }, []);
+
+  // Auto-search if initial query is provided
+  useEffect(() => {
+    if (initialQuery && initialQuery !== query) {
+      setQuery(initialQuery);
+      performSearch(initialQuery);
+    }
+  }, [initialQuery, query, performSearch]);
 
   // Handle query change with debounce
   const handleQueryChange = (value: string) => {
