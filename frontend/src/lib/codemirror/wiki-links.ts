@@ -8,16 +8,13 @@ import {
   EditorView,
   ViewPlugin,
   ViewUpdate,
-  WidgetType,
 } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
-import { syntaxTree } from '@codemirror/language';
 
 /**
- * Regular expressions for wiki links
+ * Regular expression for wiki links
  */
 const WIKI_LINK_REGEX = /\[\[([^\]]+)\]\]/g;
-const TRANSCLUSION_REGEX = /!\[\[([^\]]+)\]\]/g;
 
 /**
  * Parse document for wiki links
@@ -25,26 +22,22 @@ const TRANSCLUSION_REGEX = /!\[\[([^\]]+)\]\]/g;
 export function findWikiLinks(doc: string) {
   const links: Array<{ text: string; from: number; to: number; isTransclusion: boolean }> = [];
   
-  // Find regular wiki links
+  // Find regular wiki links (excluding transclusions)
+  // Note: Transclusions are handled by the transclusion plugin, so we skip them here
   let match;
   while ((match = WIKI_LINK_REGEX.exec(doc)) !== null) {
-    links.push({
-      text: match[1],
-      from: match.index,
-      to: match.index + match[0].length,
-      isTransclusion: false,
-    });
-  }
-  
-  // Find transclusions
-  TRANSCLUSION_REGEX.lastIndex = 0;
-  while ((match = TRANSCLUSION_REGEX.exec(doc)) !== null) {
-    links.push({
-      text: match[1],
-      from: match.index,
-      to: match.index + match[0].length,
-      isTransclusion: true,
-    });
+    // Check if this is actually a transclusion (preceded by !)
+    const isTransclusion = match.index > 0 && doc[match.index - 1] === '!';
+    
+    // Skip transclusions as they're handled by the transclusion plugin
+    if (!isTransclusion) {
+      links.push({
+        text: match[1],
+        from: match.index,
+        to: match.index + match[0].length,
+        isTransclusion: false,
+      });
+    }
   }
   
   return links.sort((a, b) => a.from - b.from);
@@ -67,13 +60,6 @@ const wikiLinkBracketDecoration = Decoration.mark({
   }
 });
 
-const transclusionDecoration = Decoration.mark({
-  class: 'cm-transclusion',
-  attributes: {
-    style: 'color: #8b5cf6; font-weight: 500; background: rgba(139, 92, 246, 0.1); padding: 2px 4px; border-radius: 3px;'
-  }
-});
-
 /**
  * Create decorations for wiki links
  */
@@ -83,17 +69,10 @@ function createWikiLinkDecorations(view: EditorView): DecorationSet {
   const links = findWikiLinks(doc);
   
   for (const link of links) {
-    if (link.isTransclusion) {
-      // Style transclusions
-      builder.add(link.from, link.from + 3, wikiLinkBracketDecoration); // ![[
-      builder.add(link.from + 3, link.to - 2, transclusionDecoration); // note name
-      builder.add(link.to - 2, link.to, wikiLinkBracketDecoration); // ]]
-    } else {
-      // Style regular wiki links
-      builder.add(link.from, link.from + 2, wikiLinkBracketDecoration); // [[
-      builder.add(link.from + 2, link.to - 2, wikiLinkDecoration); // note name
-      builder.add(link.to - 2, link.to, wikiLinkBracketDecoration); // ]]
-    }
+    // Style regular wiki links only (transclusions are handled by transclusion plugin)
+    builder.add(link.from, link.from + 2, wikiLinkBracketDecoration); // [[
+    builder.add(link.from + 2, link.to - 2, wikiLinkDecoration); // note name
+    builder.add(link.to - 2, link.to, wikiLinkBracketDecoration); // ]]
   }
   
   return builder.finish();
@@ -133,9 +112,6 @@ export const wikiLinkTheme = EditorView.baseTheme({
   },
   '.cm-wiki-link-bracket': {
     fontSize: '0.9em',
-  },
-  '.cm-transclusion': {
-    display: 'inline-block',
   },
 });
 
