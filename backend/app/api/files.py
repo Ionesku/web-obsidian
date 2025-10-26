@@ -145,7 +145,7 @@ async def rename_file(
         indexer.delete_document(request.old_path)
         
         # Re-index with new path
-        file_info = await vault.get_file(request.new_path)
+        file_info = await vault.read_file(request.new_path)
         metadata = extract_metadata_for_index(file_info['content'], request.new_path)
         
         indexer.upsert_document(
