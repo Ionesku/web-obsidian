@@ -491,7 +491,7 @@ export function VaultPage() {
           <div key={node.path}>
             <button
               onClick={() => toggleFolder(node.path)}
-              className="w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-accent transition-colors flex items-center gap-1"
+              className="w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-black/20 transition-colors flex items-center gap-1"
               style={{ paddingLeft: `${depth * 12 + 12}px` }}
             >
               {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -508,7 +508,7 @@ export function VaultPage() {
           <button
             key={node.path}
             onClick={() => handleSelectNote(node.path)}
-            className={`w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-accent transition-colors flex items-center gap-1 ${
+            className={`w-full text-left px-3 py-1 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-black/20 transition-colors flex items-center gap-1 ${
               selectedPath === node.path ? 'bg-blue-50 text-blue-600 dark:bg-accent dark:text-foreground' : ''
             }`}
             style={{ paddingLeft: `${depth * 12 + 24}px` }}
@@ -643,7 +643,7 @@ export function VaultPage() {
                 setShowSearchSidebar(false);
               }}
               className={`p-2 rounded transition-colors ${
-                showFilesSidebar ? 'bg-slate-200 dark:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-accent'
+                showFilesSidebar ? 'bg-slate-200 dark:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-black/20'
               }`}
               title="Files"
             >
@@ -655,7 +655,7 @@ export function VaultPage() {
                 setShowFilesSidebar(false);
               }}
               className={`p-2 rounded transition-colors ${
-                showSearchSidebar ? 'bg-slate-200 dark:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-accent'
+                showSearchSidebar ? 'bg-slate-200 dark:bg-primary' : 'hover:bg-slate-100 dark:hover:bg-black/20'
               }`}
               title="Search"
             >
@@ -663,7 +663,7 @@ export function VaultPage() {
             </button>
             <button
               onClick={() => {}}
-              className="p-2 rounded hover:bg-slate-100 dark:hover:bg-accent transition-colors"
+              className="p-2 rounded hover:bg-slate-100 dark:hover:bg-black/20 transition-colors"
               title="Bookmarks"
             >
               <BookMarked className="w-4 h-4" />
@@ -685,21 +685,21 @@ export function VaultPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowNewNoteDialog(true)}
-                      className="flex-1 px-3 py-2 text-sm border dark:border-border rounded hover:bg-slate-100 dark:hover:bg-accent transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 px-3 py-2 text-sm border dark:border-border rounded hover:bg-slate-100 dark:hover:bg-black/20 transition-colors flex items-center justify-center gap-1"
                       title="New note"
                     >
                       <FilePlus className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setShowNewFolderDialog(true)}
-                      className="flex-1 px-3 py-2 text-sm border dark:border-border rounded hover:bg-slate-100 dark:hover:bg-accent transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 px-3 py-2 text-sm border dark:border-border rounded hover:bg-slate-100 dark:hover:bg-black/20 transition-colors flex items-center justify-center gap-1"
                       title="New folder"
                     >
                       <FolderPlus className="w-4 h-4" />
                     </button>
                     <button
                       onClick={toggleAllFolders}
-                      className="px-3 py-2 text-sm border dark:border-border rounded hover:bg-slate-100 dark:hover:bg-accent transition-colors"
+                      className="px-3 py-2 text-sm border dark:border-border rounded hover:bg-slate-100 dark:hover:bg-black/20 transition-colors"
                       title={allExpanded ? "Collapse all" : "Expand all"}
                     >
                       <ChevronsUpDown className="w-4 h-4" />
@@ -808,7 +808,7 @@ export function VaultPage() {
                     setShowLocalSearch(false);
                     setLocalSearchInput('');
                   }}
-                  className="p-1 hover:bg-slate-100 dark:hover:bg-accent rounded"
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-black/20 rounded"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -886,7 +886,7 @@ export function VaultPage() {
                     setSearchResults(null);
                     reset();
                   }}
-                  className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-accent rounded"
+                  className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-black/20 rounded"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -902,7 +902,7 @@ export function VaultPage() {
                           setSearchResults(null);
                           reset();
                         }}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-accent rounded"
+                        className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-black/20 rounded"
                       >
                         <div className="font-medium">{hit.title}</div>
                         <div className="text-xs text-gray-500">{hit.path}</div>
@@ -921,7 +921,7 @@ export function VaultPage() {
                 <button
                   key={tab.path}
                   onClick={() => handleSelectNote(tab.path)}
-                  className={`px-4 py-2 text-sm border-r dark:border-border flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-accent transition-colors ${
+                  className={`px-4 py-2 text-sm border-r dark:border-border flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-black/20 transition-colors ${
                     activeTab === tab.path ? 'bg-slate-100 dark:bg-background' : ''
                   }`}
                 >
@@ -929,7 +929,7 @@ export function VaultPage() {
                   <span>{tab.title}</span>
                   <button
                     onClick={(e) => closeTab(tab.path, e)}
-                    className="hover:bg-slate-200 dark:hover:bg-accent rounded p-0.5"
+                    className="hover:bg-slate-200 dark:hover:bg-black/20 rounded p-0.5"
                   >
                     <X className="w-3 h-3" />
                   </button>
